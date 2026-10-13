@@ -233,7 +233,9 @@
 
   <script>
     // CONEXIÓN DIRECTA A TU SERVIDOR DIGITALOCEAN
-    const API_BASE = 'http://165.245.235.213:3000/api';
+   const API_BASE = window.location.origin.includes('vercel') 
+  ? '/api' 
+  : 'http://165.245.235.213:3000/api';
 
     const api = {
       async get(table, query = '') {
