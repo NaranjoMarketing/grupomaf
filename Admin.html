@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administración Gerencial - MAF Gas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen flex justify-center items-start lg:p-4">
+
+  <!-- PANTALLA DE ACCESO POR PIN -->
+  <div id="pantalla-login-admin" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-7 text-center space-y-6 shadow-2xl">
+      <div>
+        <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+        <h2 class="text-xl font-black text-white mt-1">ADMINISTRACIÓN MAF GAS</h2>
+        <p class="text-xs text-slate-400">Selecciona tu perfil e ingresa tu PIN de seguridad</p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <button type="button" onclick="window.seleccionarAdmin('Miguel')" id="btn-user-miguel" class="p-3 rounded-2xl border border-indigo-600 bg-indigo-600/30 text-white font-black text-xs">
+          👤 Miguel
+        </button>
+        <button type="button" onclick="window.seleccionarAdmin('Wilson')" id="btn-user-wilson" class="p-3 rounded-2xl border border-slate-700 bg-slate-800 text-slate-300 font-bold text-xs">
+          👤 Wilson
+        </button>
+        <button type="button" onclick="window.seleccionarAdmin('Rodrigo')" id="btn-user-rodrigo" class="p-3 rounded-2xl border border-slate-700 bg-slate-800 text-slate-300 font-bold text-xs">
+          👤 Rodrigo
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <input type="password" id="input-pin-admin" readonly maxlength="4" placeholder="••••" class="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 text-center text-3xl font-black text-emerald-400 tracking-[0.5em] outline-none">
+        
+        <div class="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
+          <button type="button" onclick="window.teclearPin('1')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">1</button>
+          <button type="button" onclick="window.teclearPin('2')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">2</button>
+          <button type="button" onclick="window.teclearPin('3')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">3</button>
+          <button type="button" onclick="window.teclearPin('4')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">4</button>
+          <button type="button" onclick="window.teclearPin('5')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">5</button>
+          <button type="button" onclick="window.teclearPin('6')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">6</button>
+          <button type="button" onclick="window.teclearPin('7')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">7</button>
+          <button type="button" onclick="window.teclearPin('8')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">8</button>
+          <button type="button" onclick="window.teclearPin('9')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">9</button>
+          <button type="button" onclick="window.borrarPin()" class="h-12 rounded-xl bg-rose-950/40 text-rose-400 font-bold text-sm">Borrar</button>
+          <button type="button" onclick="window.teclearPin('0')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">0</button>
+          <button type="button" onclick="window.validarAccesoAdmin()" class="h-12 rounded-xl bg-emerald-600 text-white font-black text-sm">Entrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL ERP -->
+  <div class="w-full max-w-[1720px] bg-slate-100 min-h-screen lg:min-h-[950px] lg:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden pb-12">
+
+    <!-- CABECERA -->
+    <header class="bg-slate-950 text-white p-4 lg:px-8 lg:py-5 shadow-md sticky top-0 z-30 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+          <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded font-black border border-indigo-700/50">CONTROL GENERAL GAS</span>
+          <span id="badge-admin-activo" class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded font-black border border-emerald-700">SESIÓN: RODRIGO</span>
+        </div>
+        <h1 class="font-black text-xl lg:text-2xl leading-tight">PANEL MAESTRO GERENCIAL & TARIFAS</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Control Central Inírida • Base de Datos VPS (PostgreSQL) Conectada</p>
+      </div>
+
+      <nav class="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 text-xs">
+        <button type="button" onclick="window.cambiarSeccion('pyg')" id="btn-nav-pyg" class="px-3.5 py-2 rounded-xl font-black bg-indigo-600 text-white shadow-md">
+          📈 P&G y Flujo de Caja
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('inventario')" id="btn-nav-inventario" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          📦 Inventario, Accesorios & Facturas
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('lancha')" id="btn-nav-lancha" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          🚢 Precios & Ventas Lancha
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('clientes')" id="btn-nav-clientes" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          👥 Clientes & Precios Especiales
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('equipo')" id="btn-nav-equipo" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          🚚 Personal de Reparto & Créditos
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('mantenimiento')" id="btn-nav-mantenimiento" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          🔧 Mantenimiento Flota
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('gastos')" id="btn-nav-gastos" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          💸 Gastos Fijos vs Imprevistos
+        </button>
+        <button type="button" onclick="window.cambiarSeccion('ajustes')" id="btn-nav-ajustes" class="px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          ⚙️ Ajustes & PINs
+        </button>
+      </nav>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto no-scrollbar">
+
+      <!-- PESTAÑA 1: P&G Y FLUJO DE CAJA LIBRE (FCL) -->
+      <section id="vista-pyg" class="space-y-6">
+        <div class="bg-white p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-black uppercase text-slate-500">Periodo Contable:</span>
+            <input type="month" id="filtro-periodo-mes" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+            <button type="button" onclick="window.calcularFinanzas()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md">
+              Actualizar
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="window.abrirModalHistoricoMeses()" class="px-4 py-2.5 bg-indigo-900 hover:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2">
+              <span>📅</span> <span>Ver Histórico Mes a Mes</span>
+            </button>
+            <button type="button" onclick="window.abrirModalCierreMesEmpresa()" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2">
+              <span>🔒</span> <span>Cerrar Mes en BD</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-black uppercase text-slate-400">Ingresos Totales (Ventas Netas)</span>
+            <p class="text-2xl lg:text-3xl font-black text-slate-900" id="kpi-ventas-totales">$0</p>
+            <span class="text-[11px] text-emerald-600 font-bold" id="kpi-pipetas-totales">0 servicios facturados</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-black uppercase text-slate-400">Costo Mercancía Vendida (CMV)</span>
+            <p class="text-2xl lg:text-3xl font-black text-rose-700" id="kpi-cmv-total">-$0</p>
+            <span class="text-[11px] text-slate-500 font-semibold" id="kpi-margen-bruto-pct">Margen Bruto: 0%</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] font-black uppercase text-slate-400">Gastos Operativos Fijos</span>
+            <p class="text-2xl lg:text-3xl font-black text-amber-700" id="kpi-gastos-fijos-total">-$0</p>
+            <span class="text-[11px] text-slate-500 font-semibold">Generan Punto de Equilibrio</span>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border-2 border-indigo-200 shadow-md space-y-1 bg-indigo-50/30">
+            <span class="text-[10px] font-black uppercase text-indigo-900">Utilidad Neta Real</span>
+            <p class="text-2xl lg:text-3xl font-black text-indigo-950" id="kpi-utilidad-neta">$0</p>
+            <span class="text-[11px] font-black" id="kpi-rentabilidad-neta-pct">Rentabilidad: 0%</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-black text-base text-slate-900 border-b pb-2">Estado de Resultados Consolidado (P&G)</h3>
+            <div class="space-y-2.5 text-xs">
+              <div class="flex justify-between py-1.5 border-b font-bold text-slate-700">
+                <span>(+) Ventas Totales Facturadas</span>
+                <span id="pyg-ventas-netas" class="text-slate-900 font-black">$0</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b font-bold text-rose-600">
+                <span>(-) Costo de Mercancía Vendida (CMV)</span>
+                <span id="pyg-cmv">-$0</span>
+              </div>
+              <div class="flex justify-between py-2 border-b bg-emerald-50 px-3 rounded-lg font-black text-emerald-900 text-sm">
+                <span>(=) UTILIDAD BRUTA</span>
+                <span id="pyg-utilidad-bruta">$0</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b font-bold text-amber-700">
+                <span>(-) Gastos Operativos Fijos</span>
+                <span id="pyg-gastos-fijos">-$0</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b font-bold text-amber-700">
+                <span>(-) Comisiones Repartidores</span>
+                <span id="pyg-comisiones">-$0</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b font-bold text-rose-800">
+                <span>(-) Gastos Imprevistos / Extraordinarios</span>
+                <span id="pyg-gastos-imprevistos">-$0</span>
+              </div>
+              <div class="flex justify-between py-3 border-t-2 border-indigo-950 bg-indigo-950 text-white px-4 rounded-xl font-black text-base">
+                <span>(=) UTILIDAD NETA OPERATIVA</span>
+                <span id="pyg-utilidad-final" class="text-emerald-400">$0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <span class="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Viabilidad Operativa</span>
+              <h3 class="font-black text-base text-slate-900">Punto de Equilibrio (Gastos Fijos)</h3>
+              <p class="text-xs text-slate-500">Monto mensual requerido en ventas para cubrir la operación sin pérdida.</p>
+              
+              <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <span class="text-[10px] font-bold text-slate-400 uppercase block">Meta Mínima Mensual:</span>
+                <p class="text-2xl font-black text-slate-900" id="pe-valor-equilibrio">$0</p>
+                <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden mt-2">
+                  <div id="barra-progreso-equilibrio" class="bg-indigo-600 h-full w-0 transition-all"></div>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600 block mt-1" id="pe-texto-avance">Progreso: 0%</span>
+              </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border-2 border-emerald-300 shadow-md space-y-3 bg-emerald-50/20">
+              <div class="flex justify-between items-center border-b border-emerald-200 pb-2">
+                <h3 class="font-black text-base text-emerald-950">Flujo de Caja Libre (FCL)</h3>
+                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-200 text-emerald-900 uppercase">Liquidez Real</span>
+              </div>
+              <div class="space-y-2 text-xs pt-1">
+                <div class="flex justify-between font-bold text-slate-700"><span>(+) Utilidad Operativa</span><span id="fcl-utilidad-operativa" class="font-black text-slate-900">$0</span></div>
+                <div class="flex justify-between font-bold text-emerald-700"><span>(+) Recaudo Cartera Clientes</span><span id="fcl-recaudo-clientes" class="font-black">+$0</span></div>
+                <div class="flex justify-between font-bold text-rose-700"><span>(-) Préstamos Desembolsados</span><span id="fcl-prestamos-otorgados" class="font-black">-$0</span></div>
+                <div class="flex justify-between py-3 border-t-2 border-emerald-900 bg-emerald-900 text-white px-3.5 rounded-xl font-black text-sm mt-2">
+                  <span>(=) FLUJO DE CAJA LIBRE DISPONIBLE</span>
+                  <span id="fcl-resultado-final" class="text-emerald-300 text-base">$0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 2: INVENTARIOS, ACCESORIOS Y FACTURAS -->
+      <section id="vista-inventario" class="space-y-6" style="display: none;">
+        <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-3">
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="window.cambiarSubpestanaInv('catalogo')" id="subnav-inv-catalogo" class="px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm">
+              🏷️ Catálogo, Accesorios & Servicios
+            </button>
+            <button type="button" onclick="window.cambiarSubpestanaInv('inicial')" id="subnav-inv-inicial" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200">
+              📊 Inventario Inicial Histórico
+            </button>
+            <button type="button" onclick="window.cambiarSubpestanaInv('facturas')" id="subnav-inv-facturas" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200">
+              📥 Ingreso por Factura de Proveedor
+            </button>
+          </div>
+          <button type="button" onclick="window.abrirModalProducto()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">
+            + Crear Producto, Accesorio o Servicio
+          </button>
+        </div>
+
+        <div id="subvista-inv-catalogo" class="space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b text-slate-500 uppercase font-black">
+                  <tr>
+                    <th class="p-3.5">CÓDIGO / SKU</th>
+                    <th class="p-3.5">CATEGORÍA</th>
+                    <th class="p-3.5">NOMBRE / DESCRIPCIÓN</th>
+                    <th class="p-3.5 text-right text-rose-700">COSTO COMPRA ($)</th>
+                    <th class="p-3.5 text-right text-emerald-700">PRECIO VENTA ($)</th>
+                    <th class="p-3.5 text-right font-black">MARGEN UNITARIO</th>
+                    <th class="p-3.5 text-center">STOCK ACTUAL</th>
+                    <th class="p-3.5 text-center">ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-productos-gas-body" class="divide-y divide-slate-100 font-semibold text-slate-700"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="subvista-inv-inicial" class="space-y-4" style="display: none;">
+          <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex justify-between items-center">
+            <div>
+              <h3 class="font-black text-sm text-amber-950">Línea Base: Inventario Inicial de Gas y Accesorios</h3>
+              <p class="text-xs text-amber-800">Partida histórica del negocio en Inírida.</p>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-black uppercase text-amber-700 block">Total Valorizado Inicial:</span>
+              <span class="font-black text-amber-950 text-lg" id="inv-inicial-gran-total">$0</span>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b text-slate-500 uppercase font-black">
+                  <tr><th class="p-3.5">SKU</th><th class="p-3.5">TIPO</th><th class="p-3.5">DESCRIPCIÓN</th><th class="p-3.5 text-center">CANTIDAD</th><th class="p-3.5 text-right">COSTO</th><th class="p-3.5 text-right">VALOR TOTAL</th><th class="p-3.5 text-center">FECHA</th></tr>
+                </thead>
+                <tbody id="tabla-inv-inicial-body" class="divide-y divide-slate-100 font-semibold text-slate-700"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="subvista-inv-facturas" class="space-y-4" style="display: none;">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+            <h3 class="font-black text-base text-slate-900">Recepción de Factura de Compra</h3>
+            <form onsubmit="window.procesarFacturaCompra(event)" class="space-y-4 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border">
+                <div><label class="block font-black text-slate-600 mb-1">Proveedor *</label><input type="text" id="fc-proveedor" required placeholder="Rayogas / Mayorista" class="w-full p-2.5 bg-white border rounded-xl font-bold"></div>
+                <div><label class="block font-black text-slate-600 mb-1">Número Factura *</label><input type="text" id="fc-numero" required placeholder="FAC-1234" class="w-full p-2.5 bg-white border rounded-xl font-bold"></div>
+                <div><label class="block font-black text-slate-600 mb-1">Fecha Factura *</label><input type="date" id="fc-fecha" required class="w-full p-2.5 bg-white border rounded-xl font-bold"></div>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center"><span class="font-black uppercase">Ítems</span><button type="button" onclick="window.agregarFilaFactura()" class="px-3 py-1 bg-indigo-50 border text-indigo-700 font-bold rounded-xl text-xs">+ Agregar Renglón</button></div>
+                <table class="w-full text-left text-xs border rounded-2xl overflow-hidden">
+                  <thead class="bg-slate-100 border-b"><tr><th class="p-2">Ítem</th><th class="p-2 text-center w-28">Cantidad</th><th class="p-2 text-right w-36">Costo ($)</th><th class="p-2 text-right w-36">Subtotal</th><th class="p-2 text-center w-14">✕</th></tr></thead>
+                  <tbody id="tabla-fc-filas-body"></tbody>
+                </table>
+              </div>
+              <div class="bg-indigo-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-xs uppercase">Total Factura:</span><span class="font-black text-2xl text-indigo-950" id="fc-total-gran">$0</span></div>
+              <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md text-sm">Ingresar Factura y Sumar al Inventario Central</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 3: PRECIOS SUGERIDOS DE LANCHA & AUDITORÍA FLUVIAL -->
+      <section id="vista-lancha" class="space-y-6" style="display: none;">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <span class="text-[10px] font-black uppercase text-indigo-700 tracking-wider block">Parámetros Fluviales</span>
+              <h2 class="text-lg font-black text-slate-900">Precios Sugeridos para Ventas en Lancha / Puerto</h2>
+              <p class="text-xs text-slate-500">Tarifa de referencia sugerida al repartidor y mostrador.</p>
+            </div>
+            <button type="button" onclick="window.guardarPreciosLanchaEnBD()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">
+              💾 Guardar Precios Lancha en BD
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="grid-inputs-precios-lancha"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <span class="text-[10px] font-black uppercase text-emerald-600 tracking-wider block">Auditoría Fluvial</span>
+              <h3 class="font-black text-lg text-slate-900">Informe Completo de Ventas en Lancha</h3>
+            </div>
+            <button type="button" onclick="window.exportarInformeLanchaExcel()" class="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">
+              📥 Descargar en Excel
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b font-black text-slate-500 uppercase">
+                <tr><th class="p-3">Factura</th><th class="p-3">Fecha</th><th class="p-3">Cliente</th><th class="p-3">Repartidor</th><th class="p-3 text-center">Cilindro</th><th class="p-3 text-center">Cant</th><th class="p-3 text-right">Sugerido</th><th class="p-3 text-right">Cobrado</th><th class="p-3 text-right font-black">Total</th></tr>
+              </thead>
+              <tbody id="tabla-informe-lancha-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 4: CLIENTES & PRECIOS ESPECIALES -->
+      <section id="vista-clientes" class="space-y-6" style="display: none;">
+        <div class="flex justify-between items-center border-b pb-3">
+          <div>
+            <h2 class="text-lg font-black text-slate-900">Clientes & Tarifas Especiales por Razón Social</h2>
+            <p class="text-xs text-slate-500">Configura precios preferenciales para hoteles, panaderías y restaurantes.</p>
+          </div>
+          <button type="button" onclick="window.abrirModalClienteAdmin()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">
+            + Nuevo Cliente / Tarifa Especial
+          </button>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b font-black text-slate-500 uppercase">
+                <tr><th class="p-3.5">Cliente</th><th class="p-3.5">Tipo</th><th class="p-3.5">Teléfono & Ubicación</th><th class="p-3.5 text-right">Cupo Crédito</th><th class="p-3.5 text-right text-rose-700">Deuda Actual</th><th class="p-3.5">Precios Especiales</th><th class="p-3.5 text-center">Acciones</th></tr>
+              </thead>
+              <tbody id="tabla-admin-clientes-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 5: PERSONAL DE REPARTO, LIQUIDACIONES & CRÉDITOS -->
+      <section id="vista-equipo" class="space-y-6" style="display: none;">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h2 class="text-lg lg:text-xl font-black text-slate-900">Personal de Reparto, Liquidaciones & Créditos</h2>
+            <p class="text-xs text-slate-500">Liquida comisiones mensuales decidiendo manualmente el descuento de préstamos.</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="window.abrirModalPrestamo()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5">
+              <span>💰</span> <span>Desembolsar Préstamo / Vale</span>
+            </button>
+            <button type="button" onclick="window.abrirModalEmpleado()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">
+              + Nuevo Repartidor / Ficha
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-black text-xs text-slate-900 uppercase tracking-wider">FICHAS DE REPARTIDORES</h3>
+            <div id="lista-empleados-gas" class="space-y-4">
+              <p class="text-slate-400 italic text-center py-12 text-xs">No hay repartidores registrados en el sistema.</p>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-black text-xs text-slate-900 uppercase tracking-wider">CARTERA DE PRÉSTAMOS A PERSONAL</h3>
+            <div id="lista-prestamos-pendientes" class="space-y-3">
+              <p class="text-slate-400 italic text-center py-12 text-xs">No hay créditos registrados en cartera.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 6: MANTENIMIENTOS PREVENTIVOS POR ODÓMETRO -->
+      <section id="vista-mantenimiento" class="space-y-6" style="display: none;">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-lg lg:text-xl font-black text-slate-900">Control de Mantenimientos Preventivos por Odómetro</h2>
+            <p class="text-xs text-slate-500">Alertas automáticas según manuales técnicos para camiones y motocargueros.</p>
+          </div>
+          <button type="button" onclick="window.abrirModalVehiculo()" class="px-4 py-2 bg-slate-800 text-white font-black text-xs rounded-xl">
+            + Nuevo Vehículo
+          </button>
+        </div>
+        <div id="contenedor-mantenimientos-flota" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="col-span-2 text-center py-12 text-slate-400 italic text-xs">No hay vehículos registrados para seguimiento de odómetro.</div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 7: GASTOS FIJOS VS IMPREVISTOS -->
+      <section id="vista-gastos" class="space-y-6" style="display: none;">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-lg lg:text-xl font-black text-slate-900">Gestión de Egresos Operativos</h2>
+            <p class="text-xs text-slate-500">Los gastos fijos determinan el punto de equilibrio; los imprevistos afectan solo la utilidad neta.</p>
+          </div>
+          <button type="button" onclick="window.abrirModalGasto()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md">
+            + Asentar Gasto
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded-3xl border-2 border-indigo-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-start border-b pb-3">
+              <div>
+                <span class="text-[10px] font-black uppercase text-indigo-700 tracking-wider block">AFECTAN PUNTO DE EQUILIBRIO</span>
+                <h3 class="font-black text-base text-slate-900">Gastos Fijos Mensuales</h3>
+              </div>
+              <span class="font-black text-indigo-950 text-xl" id="total-gastos-fijos-lbl">$0</span>
+            </div>
+            <div id="box-fijos-vacio" class="text-center py-10 text-slate-400 italic text-xs">No hay gastos fijos.</div>
+            <table class="w-full text-left text-xs"><tbody id="tabla-gastos-fijos-body" class="divide-y"></tbody></table>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border-2 border-rose-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-start border-b pb-3">
+              <div>
+                <span class="text-[10px] font-black uppercase text-rose-700 tracking-wider block">AFECTAN SOLO UTILIDAD NETA</span>
+                <h3 class="font-black text-base text-slate-900">Gastos Imprevistos / Extraordinarios</h3>
+              </div>
+              <span class="font-black text-rose-700 text-xl" id="total-gastos-imprevistos-lbl">$0</span>
+            </div>
+            <div id="box-imprevistos-vacio" class="text-center py-10 text-slate-400 italic text-xs">No hay gastos imprevistos.</div>
+            <table class="w-full text-left text-xs"><tbody id="tabla-gastos-imprevistos-body" class="divide-y"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 8: AJUSTES & CREDENCIALES MAESTRAS -->
+      <section id="vista-ajustes" class="space-y-6" style="display: none;">
+        <div>
+          <h2 class="text-lg lg:text-xl font-black text-slate-900">Ajustes & Credenciales Maestras</h2>
+          <p class="text-xs text-slate-500">Configuración de contraseñas de administración, POS y bodega.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-black text-xs text-slate-900 uppercase tracking-wider">PINS ADMINISTRADORES</h3>
+            <div><label class="block text-slate-500 font-bold mb-1">PIN Miguel</label><input type="text" id="set-pin-m" value="0000" maxlength="4" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-sm outline-none"></div>
+            <div><label class="block text-slate-500 font-bold mb-1">PIN Wilson</label><input type="text" id="set-pin-w" value="1234" maxlength="4" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-sm outline-none"></div>
+            <div><label class="block text-slate-500 font-bold mb-1">PIN Rodrigo</label><input type="text" id="set-pin-r" value="1730" maxlength="4" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-sm outline-none"></div>
+            <button type="button" onclick="alert('PINs guardados')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md transition-all">Guardar PINs</button>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-black text-xs text-slate-900 uppercase tracking-wider">CREDENCIALES POS MOSTRADOR</h3>
+            <div><label class="block text-slate-500 font-bold mb-1">Usuario POS</label><input type="text" id="set-pos-u" value="admin" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-sm outline-none"></div>
+            <div><label class="block text-slate-500 font-bold mb-1">Contraseña POS</label><input type="password" id="set-pos-p" value="comparto123" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-sm outline-none"></div>
+            <div class="pt-6"></div>
+            <button type="button" onclick="alert('Clave POS guardada')" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-xl shadow-md transition-all">Guardar Clave</button>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+            <div class="space-y-4">
+              <h3 class="font-black text-xs text-slate-900 uppercase tracking-wider">PIN BODEGA CENTRAL</h3>
+              <div><label class="block text-slate-500 font-bold mb-1">PIN Bodeguero</label><input type="text" id="set-pin-b" value="9999" maxlength="4" class="w-full p-2.5 bg-slate-50 border border-emerald-300 rounded-xl font-black text-sm text-emerald-700 outline-none"></div>
+            </div>
+            <button type="button" onclick="alert('PIN Bodega guardado')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all">Guardar PIN</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-3 px-6 text-center text-xs font-bold text-slate-600 flex justify-between items-center">
+      <span>MAF Gas © 2026 - Grupo MAF Inírida</span>
+      <span class="text-indigo-900 font-black">Creado y desarrollado por: Jr Naranjo - 322 858 6808</span>
+    </footer>
+
+  </div>
+
+  <!-- MODAL: REGISTRAR / EDITAR CLIENTE Y TARIFAS ESPECIALES -->
+  <div id="modal-cliente-admin" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
+    <div class="bg-white w-full max-w-xl rounded-3xl p-6 space-y-4 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900" id="titulo-modal-cli">Ficha de Cliente & Tarifas Especiales</h3>
+        <button type="button" onclick="window.cerrarModalClienteAdmin()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarClienteAdminForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="mcli-id">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Nombre Titular / Razón Social *</label>
+            <input type="text" id="mcli-nombre" required placeholder="Ej: Asadero El Paisa" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Tipo de Cliente *</label>
+            <select id="mcli-tipo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+              <option value="Restaurante">Restaurante / Asadero</option>
+              <option value="Hotel">Hotel / Hospedaje</option>
+              <option value="Panadería">Panadería</option>
+              <option value="Comercial">Comercio General</option>
+              <option value="Hogar">Hogar / Residencial</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Teléfono / WhatsApp *</label>
+            <input type="tel" id="mcli-tel" required placeholder="312..." class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Barrio *</label>
+            <input type="text" id="mcli-barrio" required placeholder="Ej: El Puerto" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Dirección Exacta</label>
+          <input type="text" id="mcli-dir" placeholder="Calle 10 con Carrera 5" class="w-full p-2.5 bg-slate-50 border rounded-xl font-semibold outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 border-t pt-2">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Cupo de Crédito ($)</label>
+            <input type="number" id="mcli-cupo" value="0" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Ciclo de Consumo Habitual (Días)</label>
+            <input type="number" id="mcli-dias" value="30" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-center outline-none">
+          </div>
+        </div>
+
+        <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-black uppercase text-indigo-950">Precios Especiales para este Cliente ($)</span>
+            <span class="text-[10px] text-indigo-700 font-semibold">Deja en 0 para precio normal</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">33 lb ($133k)[cite: 13]</label><input type="number" id="esp-33" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">40 lb ($143k)[cite: 13]</label><input type="number" id="esp-40" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">80 lb ($245k)[cite: 13]</label><input type="number" id="esp-80" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">100 lb ($318k)[cite: 13]</label><input type="number" id="esp-100" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-sm mt-2">
+          Guardar Cliente y Tarifas en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REGISTRAR PRÉSTAMO / VALE -->
+  <div id="modal-prestamo" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900">Desembolsar Préstamo / Vale</h3>
+        <button type="button" onclick="window.cerrarModalPrestamo()" class="p-1 font-black text-slate-400 text-xl">✕</button>
+      </div>
+      <form onsubmit="window.guardarPrestamoForm(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Repartidor *</label>
+          <select id="pres-emp-id" required class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none"></select>
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Monto del Préstamo ($) *</label>
+          <input type="number" id="pres-monto" required min="1" placeholder="Ej: 200000" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-slate-900 outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Concepto / Motivo</label>
+          <input type="text" id="pres-concepto" placeholder="Ej: Anticipo quincenal" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl shadow-md mt-2">
+          Desembolsar y Asentar en Cartera
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LIQUIDAR REPARTIDOR CON DEDUCCIÓN MANUAL PERSONALIZADA -->
+  <div id="modal-liquidar-repartidor" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <div>
+          <span class="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Cierre Mensual</span>
+          <h3 class="font-black text-lg text-slate-900" id="liq-nombre-rep">Liquidar</h3>
+        </div>
+        <button type="button" onclick="window.cerrarModalLiquidacion()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-2xl border space-y-1 text-xs">
+        <div class="flex justify-between"><span>Pipetas Mes:</span><b id="liq-cant-pipetas">0</b></div>
+        <div class="flex justify-between"><span>Comisión Bruta:</span><b class="text-emerald-700" id="liq-comision-bruta">$0</b></div>
+        <div class="flex justify-between border-t pt-1 font-bold"><span>Deuda Actual Préstamos:</span><b class="text-rose-700" id="liq-saldo-deuda">$0</b></div>
+      </div>
+      <div class="space-y-1.5 text-xs">
+        <label class="block font-black text-slate-700 uppercase">Monto a Deducir del Préstamo ($) *</label>
+        <p class="text-[10px] text-slate-400">Decides manualmente cuánto descontar en este cierre:</p>
+        <input type="number" id="liq-input-deduccion" oninput="window.recalcularNetoLiquidacion()" min="0" value="0" class="w-full p-3 bg-rose-50 border border-rose-300 rounded-xl font-black text-xl text-rose-700 outline-none">
+      </div>
+      <div class="bg-indigo-50 p-4 rounded-2xl flex justify-between items-center text-xs">
+        <div><span class="text-[10px] font-black uppercase text-indigo-900 block">Neto a Pagar:</span><span class="text-2xl font-black text-indigo-950" id="liq-neto-pagar">$0</span></div>
+        <div class="text-right"><span class="text-[10px] font-bold text-slate-400 block">Nuevo Saldo:</span><span class="font-black text-rose-600" id="liq-nuevo-saldo-deuda">$0</span></div>
+      </div>
+      <button type="button" onclick="window.confirmarLiquidacionMensual()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md">
+        Confirmar Liquidación en Base de Datos
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // CONEXIÓN DIRECTA A TU SERVIDOR DIGITALOCEAN
+    const API_BASE = 'http://165.245.235.213:3000/api';
+
+    const api = {
+      async get(table, query = '') {
+        try {
+          const res = await fetch(`${API_BASE}/${table}${query}`);
+          return await res.json();
+        } catch(e) { return []; }
+      },
+      async post(table, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      },
+      async put(table, id, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      }
+    };
+
+    var pinsAdmin = { 'Miguel': '0000', 'Wilson': '1234', 'Rodrigo': '1730' };
+    var adminSeleccionado = 'Rodrigo';
+
+    window.seleccionarAdmin = function(u) {
+      adminSeleccionado = u;
+      ['Miguel', 'Wilson', 'Rodrigo'].forEach(adm => {
+        document.getElementById('btn-user-' + adm.toLowerCase()).className = (adm === u)
+          ? "p-3 rounded-2xl border border-indigo-600 bg-indigo-600/30 text-white font-black text-xs"
+          : "p-3 rounded-2xl border border-slate-700 bg-slate-800 text-slate-300 font-bold text-xs";
+      });
+      document.getElementById('input-pin-admin').value = '';
+    };
+
+    window.teclearPin = function(d) {
+      var inp = document.getElementById('input-pin-admin');
+      if (inp.value.length < 4) inp.value += d;
+      if (inp.value.length === 4) window.validarAccesoAdmin();
+    };
+
+    window.borrarPin = function() {
+      var inp = document.getElementById('input-pin-admin');
+      inp.value = inp.value.slice(0, -1);
+    };
+
+    window.validarAccesoAdmin = function() {
+      var p = document.getElementById('input-pin-admin').value;
+      if (p === pinsAdmin[adminSeleccionado]) {
+        document.getElementById('pantalla-login-admin').style.display = 'none';
+        document.getElementById('badge-admin-activo').innerText = `SESIÓN: ${adminSeleccionado.toUpperCase()}`;
+        window.sincronizarBDCompleta();
+      } else {
+        alert("PIN incorrecto.");
+        document.getElementById('input-pin-admin').value = '';
+      }
+    };
+
+    // PRODUCTOS & SERVICIOS: INICIALIZADOS EN STOCK 0
+    var productosGas = [
+      { id: 'GAS-33', sku: 'GAS-33', cat: 'GAS GLP', nombre: 'Cilindro de 33 lb', costo: 0, venta: 133000, stock: 0 },
+      { id: 'GAS-40', sku: 'GAS-40', cat: 'GAS GLP', nombre: 'Cilindro de 40 lb', costo: 0, venta: 143000, stock: 0 },
+      { id: 'GAS-80', sku: 'GAS-80', cat: 'GAS GLP', nombre: 'Cilindro de 80 lb', costo: 0, venta: 245000, stock: 0 },
+      { id: 'GAS-100', sku: 'GAS-100', cat: 'GAS GLP', nombre: 'Cilindro de 100 lb', costo: 0, venta: 318000, stock: 0 },
+      { id: 'ACC-01', sku: 'ACC-01', cat: 'ACCESORIOS', nombre: 'Regulador Gas Premium', costo: 22000, venta: 45000, stock: 0 },
+      { id: 'ACC-02', sku: 'ACC-02', cat: 'ACCESORIOS', nombre: 'Manguera Reforzada (Metro)', costo: 4000, venta: 9000, stock: 0 },
+      { id: 'SRV-01', sku: 'SRV-01', cat: 'SERVICIO TÉCNICO', nombre: 'Servicio Técnico / Corrección Fuga', costo: 0, venta: 25000, stock: 999 }
+    ];
+
+    var preciosLanchaConfig = [
+      { id: 'GAS-33', cap: 33, nombre: 'Cilindro de 33 lb', sugerido: 133000 },
+      { id: 'GAS-40', cap: 40, nombre: 'Cilindro de 40 lb', sugerido: 143000 },
+      { id: 'GAS-80', cap: 80, nombre: 'Cilindro de 80 lb', sugerido: 245000 },
+      { id: 'GAS-100', cap: 100, nombre: 'Cilindro de 100 lb', sugerido: 318000 }
+    ];
+
+    // ESTRUCTURAS VACÍAS PARA INICIAR DESDE 0
+    var reportesLanchaHistorial = [];
+    var clientesAdmin = [];
+    var inventarioInicialHistorico = [];
+    var filasFacturaCompra = [];
+    var gastosFijos = [];
+    var gastosImprevistos = [];
+    var prestamosRepartidores = [];
+    var historicoCierresMeses = [];
+    var vehiculosGas = [];
+    var empleadosGas = [];
+
+    var empleadoSeleccionadoLiq = null;
+
+    // NAVEGACIÓN
+    window.cambiarSeccion = function(sId) {
+      ['pyg', 'inventario', 'lancha', 'clientes', 'equipo', 'mantenimiento', 'gastos', 'ajustes'].forEach(s => {
+        document.getElementById('vista-' + s).style.display = (s === sId) ? 'block' : 'none';
+        var b = document.getElementById('btn-nav-' + s);
+        if (b) {
+          b.className = (s === sId)
+            ? "px-3.5 py-2 rounded-xl font-black bg-indigo-600 text-white shadow-md transition-all"
+            : "px-3.5 py-2 rounded-xl font-bold text-slate-400 hover:text-white transition-all";
+        }
+      });
+      if (sId === 'pyg') window.calcularFinanzas();
+      if (sId === 'inventario') window.renderizarProductos();
+      if (sId === 'lancha') { window.renderizarInputsPreciosLancha(); window.renderizarInformeLancha(); }
+      if (sId === 'clientes') window.renderizarClientesAdmin();
+      if (sId === 'equipo') window.renderizarEquipo();
+      if (sId === 'mantenimiento') window.renderizarMantenimientos();
+      if (sId === 'gastos') window.renderizarGastos();
+    };
+
+    window.cambiarSubpestanaInv = function(subId) {
+      ['catalogo', 'inicial', 'facturas'].forEach(sb => {
+        document.getElementById('subvista-inv-' + sb).style.display = (sb === subId) ? 'block' : 'none';
+        var b = document.getElementById('subnav-inv-' + sb);
+        if (b) {
+          b.className = (sb === subId)
+            ? "px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm"
+            : "px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200";
+        }
+      });
+    };
+
+    // ==========================================
+    // SINCRONIZACIÓN CON POSTGRESQL EN VPS
+    // ==========================================
+    window.sincronizarBDCompleta = async function() {
+      try {
+        // 1. Cargar productos
+        const prodData = await api.get('productos_gas');
+        if (prodData && prodData.length > 0) {
+          productosGas = prodData.map(p => ({
+            id: p.id,
+            sku: p.sku,
+            cat: p.categoria,
+            nombre: p.nombre,
+            costo: 0,
+            venta: parseFloat(p.precio_venta),
+            stock: parseInt(p.stock_bodega_principal) || 0
+          }));
+        }
+
+        // 2. Precios lancha
+        const lanConfig = await api.get('configuracion_lancha_gas');
+        if (lanConfig && lanConfig.length > 0) {
+          preciosLanchaConfig = lanConfig.map(l => ({
+            id: l.id,
+            cap: parseInt(l.id.replace('GAS-','')) || 33,
+            nombre: `Cilindro de ${l.id.replace('GAS-','')} lb`,
+            sugerido: parseFloat(l.precio_lancha_sugerido)
+          }));
+        }
+
+        // 3. Clientes
+        const cliData = await api.get('clientes_gas');
+        if (cliData && Array.isArray(cliData)) {
+          clientesAdmin = cliData.map(c => ({
+            id: String(c.id),
+            nombre: c.nombre_titular,
+            tipo: c.tipo_cliente || 'Comercial',
+            tel: c.telefono || '-',
+            barrio: c.barrio || 'Inírida',
+            dir: c.direccion || 'Dirección',
+            cupo: parseFloat(c.cupo_credito || 0),
+            deuda: parseFloat(c.saldo_deuda || 0),
+            diasCiclo: c.dias_duracion_ciclo || 30,
+            preciosEspeciales: c.precios_especiales || {}
+          }));
+        }
+
+        // 4. Repartidores
+        const empData = await api.get('repartidores_gas');
+        if (empData && Array.isArray(empData)) {
+          empleadosGas = empData.map(e => ({
+            id: String(e.id),
+            nombre: e.nombre,
+            rol: e.rol || 'Repartidor',
+            tel: e.telefono || '-',
+            vehiculo: e.vehiculo || 'Móvil',
+            pin: e.pin || '0000',
+            comision: parseFloat(e.comision || 2000),
+            saldo_prestamo: parseFloat(e.saldo_prestamo || 0),
+            pipetas_mes: parseInt(e.pipetas_mes || 0),
+            ventas_mes: parseFloat(e.ventas_mes || 0)
+          }));
+        }
+
+        // 5. Facturas de Lancha
+        const facData = await api.get('facturas_gas');
+        if (facData && Array.isArray(facData)) {
+          reportesLanchaHistorial = facData.filter(f => f.tipo_venta === 'Lancha').map(f => {
+            var it = (f.detalles_items && f.detalles_items[0]) ? f.detalles_items[0] : { nombre: 'Gas', cant: 1 };
+            var sug = preciosLanchaConfig.find(p => p.id === it.id)?.sugerido || f.total;
+            return {
+              codigo: f.codigo_factura,
+              fecha: f.fecha_emision ? f.fecha_emision.split('T')[0] : '2026-10-01',
+              cliente: f.cliente_nombre,
+              repartidor: f.repartidor_nombre || 'Ruta Fluvial',
+              cilindro: it.nombre,
+              cant: it.cant || 1,
+              sugerido: sug,
+              cobrado: f.total / (it.cant || 1),
+              total: f.total
+            };
+          });
+        }
+
+        // 6. Gastos Fijos e Imprevistos
+        const movData = await api.get('movimientos_caja_gas');
+        if (movData && Array.isArray(movData)) {
+          gastosFijos = movData.filter(m => m.tipo === 'egreso_gasto' && m.categoria_gasto === 'fijo');
+          gastosImprevistos = movData.filter(m => m.tipo === 'egreso_gasto' && m.categoria_gasto !== 'fijo');
+        }
+
+        // 7. Préstamos personal
+        const presData = await api.get('prestamos_personal_gas');
+        if (presData && Array.isArray(presData)) prestamosRepartidores = presData;
+
+        // 8. Vehículos
+        const vehData = await api.get('vehiculos_gas');
+        if (vehData && Array.isArray(vehData)) vehiculosGas = vehData;
+
+      } catch (e) {
+        console.warn("Modo local sin respuesta inmediata:", e);
+      }
+
+      window.renderizarProductos();
+      window.renderizarClientesAdmin();
+      window.renderizarEquipo();
+      window.renderizarMantenimientos();
+      window.renderizarGastos();
+      window.calcularFinanzas();
+    };
+
+    // ==========================================
+    // RENDERIZADO PERSONAL DE REPARTO & CRÉDITOS
+    // ==========================================
+    window.renderizarEquipo = function() {
+      var contEmp = document.getElementById('lista-empleados-gas');
+      var selPres = document.getElementById('pres-emp-id');
+      selPres.innerHTML = '';
+
+      if (empleadosGas.length === 0) {
+        contEmp.innerHTML = '<p class="text-slate-400 italic text-center py-12 text-xs">No hay repartidores registrados en el sistema. Registra el primero arriba.</p>';
+      } else {
+        contEmp.innerHTML = empleadosGas.map((e, idx) => {
+          selPres.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+          return `
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="font-black text-slate-900 text-sm">${e.nombre}</span>
+                  <span class="text-slate-500 font-bold block text-[11px]">${e.rol} • ${e.vehiculo} • Tel: ${e.tel}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded-lg font-black text-[10px]">PIN: ${e.pin}</span>
+                  <button type="button" onclick="empleadosGas.splice(${idx},1); window.renderizarEquipo();" class="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100">🗑️</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-slate-200 text-center text-xs">
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Comisión</span>
+                  <b class="text-emerald-700 text-sm font-black">$${e.comision.toLocaleString()}/pipeta</b>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Pipetas Mes</span>
+                  <b class="text-slate-900 text-sm font-black">${e.pipetas_mes || 0}</b>
+                </div>
+                <div>
+                  <span class="text-[10px] text-rose-500 font-bold uppercase block">Deuda Préstamo</span>
+                  <b class="text-rose-700 text-sm font-black">$${(e.saldo_prestamo || 0).toLocaleString()}</b>
+                </div>
+              </div>
+
+              <button type="button" onclick="window.abrirModalLiquidacion('${e.id}')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all">
+                <span>💵</span> <span>Liquidar Comisiones del Mes (Deducción Personalizada)</span>
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      var contPres = document.getElementById('lista-prestamos-pendientes');
+      if (prestamosRepartidores.length === 0) {
+        contPres.innerHTML = '<p class="text-slate-400 italic text-center py-12 text-xs">No hay créditos registrados en cartera.</p>';
+      } else {
+        contPres.innerHTML = prestamosRepartidores.map(pr => `
+          <div class="p-3.5 bg-slate-50 border rounded-xl space-y-1 text-xs">
+            <div class="flex justify-between font-bold">
+              <span class="text-slate-900">${pr.nombre}</span>
+              <span class="text-rose-700 font-black">$${Number(pr.monto).toLocaleString()}</span>
+            </div>
+            <p class="text-[11px] text-slate-500 font-medium">${pr.fecha} • Motivo: ${pr.concepto}</p>
+          </div>
+        `).join('');
+      }
+    };
+
+    window.abrirModalEmpleado = async function() {
+      var nom = prompt("Nombre completo del repartidor:");
+      if (!nom) return;
+      var veh = prompt("Vehículo asignado (Ej: Motocarguero XYZ123):") || "Móvil Patio";
+      var tel = prompt("Teléfono / Celular:") || "-";
+      var pin = prompt("PIN de acceso a mostrador/móvil (4 dígitos):") || "1234";
+
+      const nuevo = {
+        nombre: nom,
+        vehiculo: veh,
+        telefono: tel,
+        rol: 'Repartidor',
+        pin: pin,
+        comision: 2000,
+        saldo_prestamo: 0,
+        pipetas_mes: 0,
+        ventas_mes: 0
+      };
+
+      try {
+        const res = await api.post('repartidores_gas', nuevo);
+        const nuevoId = (res && res.data && res.data[0]) ? String(res.data[0].id) : 'emp-' + Date.now();
+        nuevo.id = nuevoId;
+        empleadosGas.push(nuevo);
+        alert(`¡Repartidor ${nom} registrado en el VPS!`);
+      } catch (e) {
+        nuevo.id = 'emp-' + Date.now();
+        empleadosGas.push(nuevo);
+      }
+      window.renderizarEquipo();
+    };
+
+    window.abrirModalPrestamo = function() {
+      if (empleadosGas.length === 0) return alert("Registra primero un repartidor en el sistema.");
+      document.getElementById('pres-monto').value = '';
+      document.getElementById('pres-concepto').value = '';
+      document.getElementById('modal-prestamo').style.display = 'flex';
+    };
+
+    window.cerrarModalPrestamo = function() {
+      document.getElementById('modal-prestamo').style.display = 'none';
+    };
+
+    window.guardarPrestamoForm = async function(e) {
+      e.preventDefault();
+      var empId = document.getElementById('pres-emp-id').value;
+      var emp = empleadosGas.find(it => it.id === empId);
+      var monto = parseFloat(document.getElementById('pres-monto').value) || 0;
+      var conc = document.getElementById('pres-concepto').value.trim() || 'Préstamo / Vale personal';
+
+      emp.saldo_prestamo = (emp.saldo_prestamo || 0) + monto;
+
+      var objPres = {
+        empleado_id: isNaN(parseInt(empId)) ? null : parseInt(empId),
+        nombre: emp.nombre,
+        monto: monto,
+        concepto: conc,
+        fecha: new Date().toISOString().split('T')[0]
+      };
+
+      try {
+        await api.post('prestamos_personal_gas', objPres);
+        if (!isNaN(parseInt(empId))) {
+          await api.put('repartidores_gas', empId, { saldo_prestamo: emp.saldo_prestamo });
+        }
+      } catch(err) { console.warn(err); }
+
+      prestamosRepartidores.unshift(objPres);
+      window.cerrarModalPrestamo();
+      window.renderizarEquipo();
+      window.calcularFinanzas();
+      alert(`Préstamo de $${monto.toLocaleString()} registrado a ${emp.nombre}.`);
+    };
+
+    window.abrirModalLiquidacion = function(id) {
+      var emp = empleadosGas.find(it => it.id === id);
+      if (!emp) return;
+      empleadoSeleccionadoLiq = emp;
+
+      var pipetas = emp.pipetas_mes || 0;
+      var comisionBruta = pipetas * (emp.comision || 2000);
+      var deuda = emp.saldo_prestamo || 0;
+
+      document.getElementById('liq-nombre-rep').innerText = `Liquidar: ${emp.nombre}`;
+      document.getElementById('liq-cant-pipetas').innerText = `${pipetas} pipetas`;
+      document.getElementById('liq-comision-bruta').innerText = `$${comisionBruta.toLocaleString()}`;
+      document.getElementById('liq-saldo-deuda').innerText = `$${deuda.toLocaleString()}`;
+      document.getElementById('liq-input-deduccion').value = 0;
+
+      window.recalcularNetoLiquidacion();
+      document.getElementById('modal-liquidar-repartidor').style.display = 'flex';
+    };
+
+    window.cerrarModalLiquidacion = function() {
+      document.getElementById('modal-liquidar-repartidor').style.display = 'none';
+    };
+
+    window.recalcularNetoLiquidacion = function() {
+      if (!empleadoSeleccionadoLiq) return;
+      var pipetas = empleadoSeleccionadoLiq.pipetas_mes || 0;
+      var bruta = pipetas * (empleadoSeleccionadoLiq.comision || 2000);
+      var deuda = empleadoSeleccionadoLiq.saldo_prestamo || 0;
+      var ded = parseFloat(document.getElementById('liq-input-deduccion').value) || 0;
+
+      if (ded > deuda) { ded = deuda; document.getElementById('liq-input-deduccion').value = ded; }
+      var neto = Math.max(0, bruta - ded);
+      document.getElementById('liq-neto-pagar').innerText = `$${neto.toLocaleString()}`;
+      document.getElementById('liq-nuevo-saldo-deuda').innerText = `$${(deuda - ded).toLocaleString()}`;
+    };
+
+    window.confirmarLiquidacionMensual = async function() {
+      if (!empleadoSeleccionadoLiq) return;
+      var ded = parseFloat(document.getElementById('liq-input-deduccion').value) || 0;
+      var saldoRestante = (empleadoSeleccionadoLiq.saldo_prestamo || 0) - ded;
+      var pipetas = empleadoSeleccionadoLiq.pipetas_mes || 0;
+      var comBruta = pipetas * (empleadoSeleccionadoLiq.comision || 2000);
+      var neto = Math.max(0, comBruta - ded);
+
+      try {
+        await api.post('liquidaciones_repartidores_gas', {
+          periodo_mes: document.getElementById('filtro-periodo-mes').value,
+          empleado_nombre: empleadoSeleccionadoLiq.nombre,
+          cilindros_entregados: pipetas,
+          comision_unitaria: empleadoSeleccionadoLiq.comision || 2000,
+          comision_bruta: comBruta,
+          saldo_prestamo_previo: empleadoSeleccionadoLiq.saldo_prestamo,
+          deduccion_aplicada: ded,
+          saldo_prestamo_restante: saldoRestante,
+          neto_pagado: neto
+        });
+
+        if (!isNaN(parseInt(empleadoSeleccionadoLiq.id))) {
+          await api.put('repartidores_gas', empleadoSeleccionadoLiq.id, {
+            saldo_prestamo: saldoRestante,
+            pipetas_mes: 0
+          });
+        }
+      } catch (e) { console.warn(e); }
+
+      empleadoSeleccionadoLiq.saldo_prestamo = saldoRestante;
+      empleadoSeleccionadoLiq.pipetas_mes = 0;
+
+      alert(`¡Liquidación completada para ${empleadoSeleccionadoLiq.nombre}!\nSaldo restante de deuda: $${saldoRestante.toLocaleString()}`);
+      window.cerrarModalLiquidacion();
+      window.renderizarEquipo();
+      window.calcularFinanzas();
+    };
+
+    // ==========================================
+    // MANTENIMIENTOS PREVENTIVOS
+    // ==========================================
+    window.renderizarMantenimientos = function() {
+      var cont = document.getElementById('contenedor-mantenimientos-flota');
+      if (vehiculosGas.length === 0) {
+        cont.innerHTML = '<div class="col-span-2 text-center py-12 text-slate-400 italic text-xs">No hay vehículos registrados para seguimiento de odómetro.</div>';
+        return;
+      }
+      cont.innerHTML = vehiculosGas.map(v => {
+        var esCamion = v.tipo.includes('Camión');
+        return `
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-start border-b pb-3">
+              <div>
+                <span class="text-[10px] font-black uppercase text-indigo-700 tracking-wider block">${v.tipo}</span>
+                <h3 class="font-black text-lg text-slate-900">Placa: ${v.placa}</h3>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 font-bold block uppercase">Odómetro Actual:</span>
+                <span class="font-black text-slate-900 text-lg">${v.km.toLocaleString()} km</span>
+              </div>
+            </div>
+
+            <div class="space-y-3 text-xs">
+              ${esCamion ? `
+                <div class="p-3.5 rounded-2xl border border-amber-300 bg-amber-50/20 flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Mantenimiento básico (Aceite y filtros)</b>
+                    <span class="text-[11px] text-slate-500">Cada 10.000 a 20.000 km[cite: 14].</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_basico?'checked':''} onchange="v.mant_basico=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_basico?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+
+                <div class="p-3.5 rounded-2xl border border-slate-200 bg-white flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Inspección menor o intermedia</b>
+                    <span class="text-[11px] text-slate-500">Cada 30.000 a 60.000 km[cite: 14].</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_medio?'checked':''} onchange="v.mant_medio=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_medio?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+
+                <div class="p-3.5 rounded-2xl border border-slate-200 bg-white flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Mantenimiento mayor</b>
+                    <span class="text-[11px] text-slate-500">Cada 80.000 a 120.000 km[cite: 14].</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_mayor?'checked':''} onchange="v.mant_mayor=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_mayor?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+              ` : `
+                <div class="p-3.5 rounded-2xl border border-slate-200 bg-white flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Primeros kilómetros (Asentamiento)</b>
+                    <span class="text-[11px] text-slate-500">Entre 200 km y 500 km.</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_asentamiento?'checked':''} onchange="v.mant_asentamiento=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_asentamiento?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+
+                <div class="p-3.5 rounded-2xl border border-amber-300 bg-amber-50/20 flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Mantenimiento rutinario</b>
+                    <span class="text-[11px] text-slate-500">Cada 1.000 km o 3 meses.</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_rutinario?'checked':''} onchange="v.mant_rutinario=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_rutinario?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+
+                <div class="p-3.5 rounded-2xl border border-rose-300 bg-rose-50/20 flex justify-between items-center">
+                  <div>
+                    <b class="text-slate-900 block">• Mantenimiento periódico</b>
+                    <span class="text-[11px] text-slate-500">Cada 3.000 a 5.000 km.</span>
+                  </div>
+                  <label class="flex items-center gap-1.5 font-bold cursor-pointer">
+                    <input type="checkbox" ${v.mant_periodico?'checked':''} onchange="v.mant_periodico=this.checked;" class="w-4 h-4 text-emerald-600 rounded">
+                    <span>${v.mant_periodico?'Realizado':'Pendiente'}</span>
+                  </label>
+                </div>
+              `}
+            </div>
+
+            <div class="pt-3 border-t flex justify-between items-center text-xs">
+              <span class="text-slate-500 font-bold">Actualizar odómetro:</span>
+              <input type="number" value="${v.km}" onchange="v.km=parseFloat(this.value)||v.km; window.renderizarMantenimientos();" class="w-32 p-2 bg-slate-50 border rounded-xl font-black text-right outline-none">
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    window.abrirModalVehiculo = async function() {
+      var placa = prompt("Placa del vehículo:");
+      if (!placa) return;
+      var tipo = prompt("Tipo (Ej: Camión NHR o Motocarguero):") || "Camión NHR";
+      var km = parseInt(prompt("Kilometraje / Odómetro actual:") || 0);
+
+      var nuevo = {
+        placa: placa.toUpperCase(),
+        tipo: tipo,
+        km: km,
+        mant_basico: false,
+        mant_medio: false,
+        mant_mayor: false
+      };
+
+      try {
+        await api.post('vehiculos_gas', nuevo);
+      } catch(e) {}
+      vehiculosGas.push(nuevo);
+      window.renderizarMantenimientos();
+    };
+
+    // ==========================================
+    // CATÁLOGO DE PRODUCTOS
+    // ==========================================
+    window.renderizarProductos = function() {
+      var tbody = document.getElementById('tabla-productos-gas-body');
+      tbody.innerHTML = productosGas.map((p, idx) => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3.5 font-mono font-bold text-slate-700">${p.sku}</td>
+          <td class="p-3.5">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${p.cat==='GAS GLP'?'bg-indigo-100 text-indigo-800':p.cat==='ACCESORIOS'?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-800'}">
+              ${p.cat}
+            </span>
+          </td>
+          <td class="p-3.5 font-black text-slate-900">${p.nombre}</td>
+          <td class="p-3.5 text-right font-black text-rose-700">$${p.costo.toLocaleString()}</td>
+          <td class="p-3.5 text-right font-black text-emerald-700">$${p.venta.toLocaleString()}</td>
+          <td class="p-3.5 text-right font-black text-slate-900">$${(p.venta - p.costo).toLocaleString()}</td>
+          <td class="p-3.5 text-center font-black ${p.stock <= 0 && p.cat !== 'SERVICIO TÉCNICO' ? 'text-rose-600' : 'text-slate-900'}">${p.stock}</td>
+          <td class="p-3.5 text-center">
+            <button type="button" onclick="productosGas.splice(${idx},1); window.renderizarProductos();" class="text-rose-500 font-bold hover:underline">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    };
+
+    // ==========================================
+    // GASTOS FIJOS VS IMPREVISTOS
+    // ==========================================
+    window.renderizarGastos = function() {
+      var tbodyF = document.getElementById('tabla-gastos-fijos-body');
+      var tbodyI = document.getElementById('tabla-gastos-imprevistos-body');
+      var totalF = gastosFijos.reduce((a, b) => a + parseFloat(b.monto), 0);
+      var totalI = gastosImprevistos.reduce((a, b) => a + parseFloat(b.monto), 0);
+
+      document.getElementById('total-gastos-fijos-lbl').innerText = `$${totalF.toLocaleString()}`;
+      document.getElementById('total-gastos-imprevistos-lbl').innerText = `$${totalI.toLocaleString()}`;
+
+      document.getElementById('box-fijos-vacio').style.display = (gastosFijos.length === 0) ? 'block' : 'none';
+      document.getElementById('box-imprevistos-vacio').style.display = (gastosImprevistos.length === 0) ? 'block' : 'none';
+
+      tbodyF.innerHTML = gastosFijos.map((g, idx) => `
+        <tr>
+          <td class="p-2 font-bold">${g.fecha ? g.fecha.split('T')[0] : 'Hoy'}</td>
+          <td class="p-2">${g.concepto}</td>
+          <td class="p-2 text-right font-black text-rose-700">$${parseFloat(g.monto).toLocaleString()}</td>
+          <td class="p-2 text-center"><button type="button" onclick="gastosFijos.splice(${idx},1); window.renderizarGastos(); window.calcularFinanzas();" class="text-rose-500 font-bold">✕</button></td>
+        </tr>
+      `).join('');
+
+      tbodyI.innerHTML = gastosImprevistos.map((g, idx) => `
+        <tr>
+          <td class="p-2 font-bold">${g.fecha ? g.fecha.split('T')[0] : 'Hoy'}</td>
+          <td class="p-2">${g.concepto}</td>
+          <td class="p-2 text-right font-black text-rose-700">$${parseFloat(g.monto).toLocaleString()}</td>
+          <td class="p-2 text-center"><button type="button" onclick="gastosImprevistos.splice(${idx},1); window.renderizarGastos(); window.calcularFinanzas();" class="text-rose-500 font-bold">✕</button></td>
+        </tr>
+      `).join('');
+    };
+
+    window.abrirModalGasto = async function() {
+      var conc = prompt("Concepto del gasto:");
+      if (!conc) return;
+      var monto = parseFloat(prompt("Monto pagado ($):", "100000")) || 0;
+      var esFijo = confirm("¿Es un gasto FIJO operativo? (Afecta punto de equilibrio)\nCancelar = Gasto imprevisto");
+      
+      var obj = { 
+        tipo: 'egreso_gasto',
+        categoria_gasto: esFijo ? 'fijo' : 'imprevisto',
+        concepto: conc,
+        monto: monto,
+        responsable: adminSeleccionado
+      };
+
+      try {
+        await api.post('movimientos_caja_gas', obj);
+      } catch (e) { console.warn(e); }
+
+      if (esFijo) gastosFijos.unshift(obj);
+      else gastosImprevistos.unshift(obj);
+
+      window.renderizarGastos();
+      window.calcularFinanzas();
+    };
+
+    // ==========================================
+    // CLIENTES & PRECIOS ESPECIALES
+    // ==========================================
+    window.renderizarClientesAdmin = function() {
+      var tbody = document.getElementById('tabla-admin-clientes-body');
+      if (clientesAdmin.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">No hay clientes registrados en la base de datos aún.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = clientesAdmin.map((c) => {
+        var esp = c.preciosEspeciales || {};
+        var badgesEsp = [];
+        if (esp['GAS-33']) badgesEsp.push(`33lb: $${Number(esp['GAS-33']).toLocaleString()}`);
+        if (esp['GAS-40']) badgesEsp.push(`40lb: $${Number(esp['GAS-40']).toLocaleString()}`);
+        if (esp['GAS-80']) badgesEsp.push(`80lb: $${Number(esp['GAS-80']).toLocaleString()}`);
+        if (esp['GAS-100']) badgesEsp.push(`100lb: $${Number(esp['GAS-100']).toLocaleString()}`);
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3.5 font-black text-slate-900">${c.nombre}</td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-indigo-100 text-indigo-800">${c.tipo}</span></td>
+            <td class="p-3.5">${c.tel} • <span class="text-slate-500 font-semibold">${c.barrio}</span></td>
+            <td class="p-3.5 text-right font-black">$${c.cupo.toLocaleString()}</td>
+            <td class="p-3.5 text-right font-black text-rose-700">$${c.deuda.toLocaleString()}</td>
+            <td class="p-3.5">
+              ${badgesEsp.length > 0 ? badgesEsp.map(b => `<span class="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black px-1.5 py-0.5 rounded mr-1 mb-1">${b}</span>`).join('') : '<span class="text-slate-400 italic text-[11px]">Tarifa regular</span>'}
+            </td>
+            <td class="p-3.5 text-center">
+              <button type="button" onclick="window.editarClienteAdmin('${c.id}')" class="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-lg text-xs hover:bg-indigo-100">
+                ✏️ Tarifas
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    window.abrirModalClienteAdmin = function() {
+      document.getElementById('mcli-id').value = '';
+      document.getElementById('mcli-nombre').value = '';
+      document.getElementById('mcli-tel').value = '';
+      document.getElementById('mcli-barrio').value = '';
+      document.getElementById('mcli-dir').value = '';
+      document.getElementById('mcli-cupo').value = 0;
+      document.getElementById('mcli-dias').value = 30;
+      document.getElementById('esp-33').value = '';
+      document.getElementById('esp-40').value = '';
+      document.getElementById('esp-80').value = '';
+      document.getElementById('esp-100').value = '';
+      document.getElementById('modal-cliente-admin').style.display = 'flex';
+    };
+
+    window.editarClienteAdmin = function(id) {
+      var c = clientesAdmin.find(it => it.id === id);
+      if (!c) return;
+      document.getElementById('mcli-id').value = c.id;
+      document.getElementById('mcli-nombre').value = c.nombre;
+      document.getElementById('mcli-tipo').value = c.tipo;
+      document.getElementById('mcli-tel').value = c.tel;
+      document.getElementById('mcli-barrio').value = c.barrio;
+      document.getElementById('mcli-dir').value = c.dir;
+      document.getElementById('mcli-cupo').value = c.cupo;
+      document.getElementById('mcli-dias').value = c.diasCiclo || 30;
+
+      var esp = c.preciosEspeciales || {};
+      document.getElementById('esp-33').value = esp['GAS-33'] || '';
+      document.getElementById('esp-40').value = esp['GAS-40'] || '';
+      document.getElementById('esp-80').value = esp['GAS-80'] || '';
+      document.getElementById('esp-100').value = esp['GAS-100'] || '';
+      document.getElementById('modal-cliente-admin').style.display = 'flex';
+    };
+
+    window.cerrarModalClienteAdmin = function() {
+      document.getElementById('modal-cliente-admin').style.display = 'none';
+    };
+
+    window.guardarClienteAdminForm = async function(e) {
+      e.preventDefault();
+      var id = document.getElementById('mcli-id').value;
+      var nombre = document.getElementById('mcli-nombre').value.trim();
+      var tipo = document.getElementById('mcli-tipo').value;
+      var tel = document.getElementById('mcli-tel').value.trim();
+      var barrio = document.getElementById('mcli-barrio').value.trim();
+      var dir = document.getElementById('mcli-dir').value.trim();
+      var cupo = parseFloat(document.getElementById('mcli-cupo').value) || 0;
+      var dias = parseInt(document.getElementById('mcli-dias').value) || 30;
+
+      var espObj = {};
+      var v33 = parseFloat(document.getElementById('esp-33').value);
+      var v40 = parseFloat(document.getElementById('esp-40').value);
+      var v80 = parseFloat(document.getElementById('esp-80').value);
+      var v100 = parseFloat(document.getElementById('esp-100').value);
+
+      if (v33 > 0) espObj['GAS-33'] = v33;
+      if (v40 > 0) espObj['GAS-40'] = v40;
+      if (v80 > 0) espObj['GAS-80'] = v80;
+      if (v100 > 0) espObj['GAS-100'] = v100;
+
+      const payload = {
+        nombre_titular: nombre,
+        tipo_cliente: tipo,
+        telefono: tel,
+        barrio: barrio,
+        direccion: dir,
+        cupo_credito: cupo,
+        dias_duracion_ciclo: dias,
+        precios_especiales: espObj
+      };
+
+      try {
+        if (id) {
+          await api.put('clientes_gas', id, payload);
+        } else {
+          payload.fecha_ultima_compra = new Date().toISOString().split('T')[0];
+          await api.post('clientes_gas', payload);
+        }
+      } catch (err) { console.warn("Error API:", err); }
+
+      window.cerrarModalClienteAdmin();
+      await window.sincronizarBDCompleta();
+      alert(`¡Cliente ${nombre} y sus tarifas guardados en PostgreSQL!`);
+    };
+
+    // ==========================================
+    // PRECIOS LANCHA & AUDITORÍA FLUVIAL
+    // ==========================================
+    window.renderizarInputsPreciosLancha = function() {
+      var cont = document.getElementById('grid-inputs-precios-lancha');
+      cont.innerHTML = preciosLanchaConfig.map((p, idx) => `
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+          <span class="text-[10px] font-black uppercase text-indigo-700 block">${p.nombre}</span>
+          <label class="block text-slate-500 font-bold text-[10px]">Precio Sugerido Lancha ($):</label>
+          <input type="number" value="${p.sugerido}" onchange="preciosLanchaConfig[${idx}].sugerido = parseFloat(this.value)||0;" class="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-lg outline-none">
+        </div>
+      `).join('');
+    };
+
+    window.guardarPreciosLanchaEnBD = async function() {
+      try {
+        for (var item of preciosLanchaConfig) {
+          await api.put('configuracion_lancha_gas', item.id, {
+            precio_lancha_sugerido: item.sugerido
+          });
+        }
+        alert("¡Precios sugeridos de lancha guardados en PostgreSQL!");
+      } catch (e) { alert("Error guardando precios."); }
+    };
+
+    window.renderizarInformeLancha = function() {
+      var tbody = document.getElementById('tabla-informe-lancha-body');
+      if (reportesLanchaHistorial.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400 italic">No hay ventas en lancha registradas en la base de datos.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = reportesLanchaHistorial.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-mono font-bold text-indigo-950">${r.codigo}</td>
+          <td class="p-3">${r.fecha}</td>
+          <td class="p-3 font-black text-slate-900">${r.cliente}</td>
+          <td class="p-3 font-bold">${r.repartidor}</td>
+          <td class="p-3 text-center">${r.cilindro}</td>
+          <td class="p-3 text-center font-black">${r.cant}</td>
+          <td class="p-3 text-right">$${r.sugerido.toLocaleString()}</td>
+          <td class="p-3 text-right font-black text-indigo-950">$${r.cobrado.toLocaleString()}</td>
+          <td class="p-3 text-right font-black text-emerald-700 text-sm">$${r.total.toLocaleString()}</td>
+        </tr>
+      `).join('');
+    };
+
+    window.exportarInformeLanchaExcel = function() {
+      var csv = "Informe Completo Ventas en Lancha - MAF Gas Inirida\n\n";
+      csv += "Codigo,Fecha,Cliente,Repartidor,Cilindro,Cantidad,Precio Sugerido,Precio Cobrado,Total Recaudado\n";
+      reportesLanchaHistorial.forEach(r => {
+        csv += `"${r.codigo}","${r.fecha}","${r.cliente}","${r.repartidor}","${r.cilindro}",${r.cant},${r.sugerido},${r.cobrado},${r.total}\n`;
+      });
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Ventas_Lancha_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    };
+
+    // ==========================================
+    // CÁLCULO P&G
+    // ==========================================
+    window.calcularFinanzas = function() {
+      var ventas = 0, cmv = 0;
+      var totalFijos = gastosFijos.reduce((a, b) => a + parseFloat(b.monto), 0);
+      var totalImprevistos = gastosImprevistos.reduce((a, b) => a + parseFloat(b.monto), 0);
+      var comisiones = 0;
+      var utilidadBruta = ventas - cmv;
+      var utilidadNeta = utilidadBruta - totalFijos - comisiones - totalImprevistos;
+
+      document.getElementById('kpi-ventas-totales').innerText = `$${ventas.toLocaleString()}`;
+      document.getElementById('kpi-cmv-total').innerText = `-$${cmv.toLocaleString()}`;
+      document.getElementById('kpi-gastos-fijos-total').innerText = `-$${totalFijos.toLocaleString()}`;
+      document.getElementById('kpi-utilidad-neta').innerText = `$${utilidadNeta.toLocaleString()}`;
+
+      document.getElementById('pyg-ventas-netas').innerText = `$${ventas.toLocaleString()}`;
+      document.getElementById('pyg-cmv').innerText = `-$${cmv.toLocaleString()}`;
+      document.getElementById('pyg-utilidad-bruta').innerText = `$${utilidadBruta.toLocaleString()}`;
+      document.getElementById('pyg-gastos-fijos').innerText = `-$${totalFijos.toLocaleString()}`;
+      document.getElementById('pyg-comisiones').innerText = `-$${comisiones.toLocaleString()}`;
+      document.getElementById('pyg-gastos-imprevistos').innerText = `-$${totalImprevistos.toLocaleString()}`;
+      document.getElementById('pyg-utilidad-final').innerText = `$${utilidadNeta.toLocaleString()}`;
+
+      var ptoEq = totalFijos > 0 ? Math.round(totalFijos / 0.25) : 0;
+      document.getElementById('pe-valor-equilibrio').innerText = `$${ptoEq.toLocaleString()}`;
+
+      document.getElementById('fcl-utilidad-operativa').innerText = `$${utilidadNeta.toLocaleString()}`;
+      document.getElementById('fcl-resultado-final').innerText = `$${utilidadNeta.toLocaleString()}`;
+    };
+
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('filtro-periodo-mes').value = '2026-10';
+      window.sincronizarBDCompleta();
+    });
+  </script>
+</body>
+</html>

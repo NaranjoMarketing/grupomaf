@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bodega & Taller - MAF Gas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen flex justify-center items-start lg:p-4">
+
+  <!-- PANTALLA LOGIN PIN BODEGA -->
+  <div id="pantalla-pin-bodega" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-6 text-center space-y-6 shadow-2xl">
+      <div>
+        <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+        <h2 class="text-xl font-black text-white mt-1">BODEGA CENTRAL DE GAS</h2>
+        <p class="text-xs text-slate-400">Ingresa el PIN de seguridad del operador de patio</p>
+      </div>
+
+      <div class="space-y-4">
+        <input type="password" id="input-pin-bodega" readonly maxlength="4" placeholder="••••" class="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 text-center text-3xl font-black text-emerald-400 tracking-[0.5em] outline-none">
+        
+        <div class="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
+          <button type="button" onclick="window.teclearPinB('1')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">1</button>
+          <button type="button" onclick="window.teclearPinB('2')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">2</button>
+          <button type="button" onclick="window.teclearPinB('3')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">3</button>
+          <button type="button" onclick="window.teclearPinB('4')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">4</button>
+          <button type="button" onclick="window.teclearPinB('5')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">5</button>
+          <button type="button" onclick="window.teclearPinB('6')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">6</button>
+          <button type="button" onclick="window.teclearPinB('7')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">7</button>
+          <button type="button" onclick="window.teclearPinB('8')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">8</button>
+          <button type="button" onclick="window.teclearPinB('9')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">9</button>
+          <button type="button" onclick="window.borrarPinB()" class="h-12 rounded-xl bg-rose-950/40 text-rose-400 font-bold text-sm">Borrar</button>
+          <button type="button" onclick="window.teclearPinB('0')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">0</button>
+          <button type="button" onclick="window.validarPinB()" class="h-12 rounded-xl bg-emerald-600 text-white font-black text-sm">Entrar</button>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-500">PIN: <b>9999</b></p>
+    </div>
+  </div>
+
+  <div class="w-full max-w-7xl bg-slate-100 min-h-screen lg:min-h-[880px] lg:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden pb-12">
+    <header class="bg-slate-950 text-white p-4 lg:px-8 lg:py-5 shadow-md sticky top-0 z-30 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+          <span class="text-[10px] bg-slate-800 text-slate-200 px-2 py-0.5 rounded font-bold">CONTROL DE ENVASES & PATIO</span>
+          <span class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-800">VPS CONECTADO</span>
+        </div>
+        <h1 class="font-black text-xl lg:text-2xl leading-tight">BODEGA CENTRAL DE GAS</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Control de Cilindros Llenos vs. Vacíos</p>
+      </div>
+
+      <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
+        <button type="button" onclick="window.cambiarVistaBodega('inventario')" id="btn-b-inv" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-black shadow-md">
+          📊 Balance de Cilindros
+        </button>
+        <button type="button" onclick="window.cambiarVistaBodega('cargue')" id="btn-b-cargue" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white">
+          ⚡ Cargue a Vehículos
+        </button>
+        <button type="button" onclick="window.cambiarVistaBodega('retorno')" id="btn-b-retorno" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white">
+          🔄 Retorno de Vacíos
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto no-scrollbar space-y-6">
+      <section id="vista-b-inventario" class="space-y-4">
+        <div>
+          <h2 class="text-lg font-black text-slate-900">Estado del Parque de Cilindros en Inírida</h2>
+          <p class="text-xs text-slate-500">Supervisión de envases llenos y vacíos en acopio sincronizados con el servidor VPS.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span class="text-[10px] font-black uppercase text-indigo-900">Cilindro de 33 lb</span>
+            <div class="space-y-1 text-xs">
+              <div class="flex justify-between"><span>Llenos en Patio:</span><b class="text-emerald-700" id="stk-33-llenos">0</b></div>
+              <div class="flex justify-between"><span>Vacíos Acopio:</span><b class="text-amber-700" id="stk-33-vacios">0</b></div>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span class="text-[10px] font-black uppercase text-indigo-900">Cilindro de 40 lb</span>
+            <div class="space-y-1 text-xs">
+              <div class="flex justify-between"><span>Llenos en Patio:</span><b class="text-emerald-700" id="stk-40-llenos">0</b></div>
+              <div class="flex justify-between"><span>Vacíos Acopio:</span><b class="text-amber-700" id="stk-40-vacios">0</b></div>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span class="text-[10px] font-black uppercase text-indigo-900">Cilindro de 80 lb</span>
+            <div class="space-y-1 text-xs">
+              <div class="flex justify-between"><span>Llenos en Patio:</span><b class="text-emerald-700" id="stk-80-llenos">0</b></div>
+              <div class="flex justify-between"><span>Vacíos Acopio:</span><b class="text-amber-700" id="stk-80-vacios">0</b></div>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+            <span class="text-[10px] font-black uppercase text-indigo-900">Cilindro de 100 lb</span>
+            <div class="space-y-1 text-xs">
+              <div class="flex justify-between"><span>Llenos en Patio:</span><b class="text-emerald-700" id="stk-100-llenos">0</b></div>
+              <div class="flex justify-between"><span>Vacíos Acopio:</span><b class="text-amber-700" id="stk-100-vacios">0</b></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="vista-b-cargue" class="space-y-4" style="display: none;">
+        <div class="max-w-2xl bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+          <h3 class="font-black text-base text-slate-900">Despacho de Pipetas Llenas a Repartidor</h3>
+          <form onsubmit="window.despacharAVehiculo(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-black text-slate-600 mb-1">Vehículo / Repartidor *</label>
+              <select id="desp-vehiculo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                <option value="">Cargando repartidores registrados...</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-4 gap-2 border-t pt-2">
+              <div><label class="block text-[10px] font-bold">33 lb</label><input type="number" id="carg-33" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">40 lb</label><input type="number" id="carg-40" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">80 lb</label><input type="number" id="carg-80" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">100 lb</label><input type="number" id="carg-100" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+            </div>
+            <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white font-black rounded-xl shadow-md">
+              ⚡ Transferir al Móvil y Actualizar Base de Datos
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section id="vista-b-retorno" class="space-y-4" style="display: none;">
+        <div class="max-w-2xl bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+          <h3 class="font-black text-base text-slate-900">Recepción de Pipetas Vacías (Cierre de Ruta)</h3>
+          <form onsubmit="window.recibirVacios(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-black text-slate-600 mb-1">Vehículo que Entrega *</label>
+              <select id="ret-vehiculo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                <option value="">Cargando repartidores registrados...</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-4 gap-2 border-t pt-2">
+              <div><label class="block text-[10px] font-bold">Vacíos 33 lb</label><input type="number" id="ret-33" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">Vacíos 40 lb</label><input type="number" id="ret-40" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">Vacíos 80 lb</label><input type="number" id="ret-80" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+              <div><label class="block text-[10px] font-bold">Vacíos 100 lb</label><input type="number" id="ret-100" min="0" value="0" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black"></div>
+            </div>
+            <button type="submit" class="w-full py-3.5 bg-slate-900 text-white font-black rounded-xl shadow-md">
+              Confirmar Entrada al Patio de Acopio
+            </button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // CONEXIÓN DIRECTA A TU SERVIDOR DIGITALOCEAN
+    const API_BASE = 'http://165.245.235.213:3000/api';
+
+    const api = {
+      async get(table, query = '') {
+        try {
+          const res = await fetch(`${API_BASE}/${table}${query}`);
+          return await res.json();
+        } catch(e) { return []; }
+      },
+      async put(table, id, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      }
+    };
+
+    var pinBodegaOficial = '9999';
+
+    // INICIALIZADO EN 0 HASTA QUE SE REGISTRE EL INVENTARIO REAL EN EL ADMINISTRADOR
+    var stockBodega = {
+      'GAS-33': { llenos: 0, vacios: 0 },
+      'GAS-40': { llenos: 0, vacios: 0 },
+      'GAS-80': { llenos: 0, vacios: 0 },
+      'GAS-100': { llenos: 0, vacios: 0 }
+    };
+
+    window.teclearPinB = function(d) {
+      var inp = document.getElementById('input-pin-bodega');
+      if (inp.value.length < 4) inp.value += d;
+      if (inp.value.length === 4) window.validarPinB();
+    };
+
+    window.borrarPinB = function() {
+      var inp = document.getElementById('input-pin-bodega');
+      inp.value = inp.value.slice(0, -1);
+    };
+
+    window.validarPinB = async function() {
+      if (document.getElementById('input-pin-bodega').value === pinBodegaOficial) {
+        document.getElementById('pantalla-pin-bodega').style.display = 'none';
+        await window.cargarRepartidoresBodega();
+        await window.sincronizarStockBodega();
+      } else {
+        alert("PIN incorrecto.");
+        document.getElementById('input-pin-bodega').value = '';
+      }
+    };
+
+    window.cargarRepartidoresBodega = async function() {
+      try {
+        const reps = await api.get('repartidores_gas');
+        var selDesp = document.getElementById('desp-vehiculo');
+        var selRet = document.getElementById('ret-vehiculo');
+
+        if (!reps || reps.length === 0) {
+          selDesp.innerHTML = '<option value="">No hay repartidores registrados en administración...</option>';
+          selRet.innerHTML = '<option value="">No hay repartidores registrados en administración...</option>';
+          return;
+        }
+
+        var opciones = reps.map(r => `<option value="${r.id}">${r.nombre} • ${r.vehiculo}</option>`).join('');
+        selDesp.innerHTML = opciones;
+        selRet.innerHTML = opciones;
+      } catch (err) {
+        console.warn("Error cargando repartidores:", err);
+      }
+    };
+
+    window.sincronizarStockBodega = async function() {
+      try {
+        const pData = await api.get('productos_gas');
+        if (pData && Array.isArray(pData)) {
+          pData.forEach(p => {
+            if (stockBodega[p.id]) {
+              stockBodega[p.id].llenos = parseInt(p.stock_bodega_principal) || 0;
+              stockBodega[p.id].vacios = parseInt(p.stock_vacios_bodega) || 0;
+            }
+          });
+        }
+      } catch (e) { console.warn("Error leyendo inventario del VPS:", e); }
+
+      document.getElementById('stk-33-llenos').innerText = stockBodega['GAS-33'].llenos;
+      document.getElementById('stk-33-vacios').innerText = stockBodega['GAS-33'].vacios;
+      document.getElementById('stk-40-llenos').innerText = stockBodega['GAS-40'].llenos;
+      document.getElementById('stk-40-vacios').innerText = stockBodega['GAS-40'].vacios;
+      document.getElementById('stk-80-llenos').innerText = stockBodega['GAS-80'].llenos;
+      document.getElementById('stk-80-vacios').innerText = stockBodega['GAS-80'].vacios;
+      document.getElementById('stk-100-llenos').innerText = stockBodega['GAS-100'].llenos;
+      document.getElementById('stk-100-vacios').innerText = stockBodega['GAS-100'].vacios;
+    };
+
+    window.cambiarVistaBodega = function(v) {
+      ['inventario', 'cargue', 'retorno'].forEach(id => {
+        document.getElementById('vista-b-' + id).style.display = (id === v) ? 'block' : 'none';
+        var b = document.getElementById('btn-b-' + id);
+        if (b) {
+          b.className = (id === v)
+            ? "px-4 py-2 rounded-xl bg-emerald-600 text-white font-black shadow-md"
+            : "px-4 py-2 rounded-xl text-slate-400 hover:text-white";
+        }
+      });
+    };
+
+    window.despacharAVehiculo = async function(e) {
+      e.preventDefault();
+      var c33 = parseInt(document.getElementById('carg-33').value) || 0;
+      var c40 = parseInt(document.getElementById('carg-40').value) || 0;
+      var c80 = parseInt(document.getElementById('carg-80').value) || 0;
+      var c100 = parseInt(document.getElementById('carg-100').value) || 0;
+
+      if ((stockBodega['GAS-33'].llenos < c33) ||
+          (stockBodega['GAS-40'].llenos < c40) ||
+          (stockBodega['GAS-80'].llenos < c80) ||
+          (stockBodega['GAS-100'].llenos < c100)) {
+        return alert("No hay suficiente existencia de cilindros llenos en patio para despachar esa cantidad.");
+      }
+
+      stockBodega['GAS-33'].llenos -= c33;
+      stockBodega['GAS-40'].llenos -= c40;
+      stockBodega['GAS-80'].llenos -= c80;
+      stockBodega['GAS-100'].llenos -= c100;
+
+      try {
+        if (c33 > 0) await api.put('productos_gas', 'GAS-33', { stock_bodega_principal: stockBodega['GAS-33'].llenos });
+        if (c40 > 0) await api.put('productos_gas', 'GAS-40', { stock_bodega_principal: stockBodega['GAS-40'].llenos });
+        if (c80 > 0) await api.put('productos_gas', 'GAS-80', { stock_bodega_principal: stockBodega['GAS-80'].llenos });
+        if (c100 > 0) await api.put('productos_gas', 'GAS-100', { stock_bodega_principal: stockBodega['GAS-100'].llenos });
+      } catch (err) { console.warn("Error actualizando en VPS:", err); }
+
+      alert("Despacho registrado y descontado del inventario de patio en PostgreSQL.");
+      document.getElementById('carg-33').value = 0;
+      document.getElementById('carg-40').value = 0;
+      document.getElementById('carg-80').value = 0;
+      document.getElementById('carg-100').value = 0;
+      window.sincronizarStockBodega();
+      window.cambiarVistaBodega('inventario');
+    };
+
+    window.recibirVacios = async function(e) {
+      e.preventDefault();
+      var r33 = parseInt(document.getElementById('ret-33').value) || 0;
+      var r40 = parseInt(document.getElementById('ret-40').value) || 0;
+      var r80 = parseInt(document.getElementById('ret-80').value) || 0;
+      var r100 = parseInt(document.getElementById('ret-100').value) || 0;
+
+      stockBodega['GAS-33'].vacios += r33;
+      stockBodega['GAS-40'].vacios += r40;
+      stockBodega['GAS-80'].vacios += r80;
+      stockBodega['GAS-100'].vacios += r100;
+
+      try {
+        if (r33 > 0) await api.put('productos_gas', 'GAS-33', { stock_vacios_bodega: stockBodega['GAS-33'].vacios });
+        if (r40 > 0) await api.put('productos_gas', 'GAS-40', { stock_vacios_bodega: stockBodega['GAS-40'].vacios });
+        if (r80 > 0) await api.put('productos_gas', 'GAS-80', { stock_vacios_bodega: stockBodega['GAS-80'].vacios });
+        if (r100 > 0) await api.put('productos_gas', 'GAS-100', { stock_vacios_bodega: stockBodega['GAS-100'].vacios });
+      } catch (err) { console.warn("Error actualizando en VPS:", err); }
+
+      alert("Retorno de vacíos asentado en el patio de acopio.");
+      document.getElementById('ret-33').value = 0;
+      document.getElementById('ret-40').value = 0;
+      document.getElementById('ret-80').value = 0;
+      document.getElementById('ret-100').value = 0;
+      window.sincronizarStockBodega();
+      window.cambiarVistaBodega('inventario');
+    };
+  </script>
+</body>
+</html>

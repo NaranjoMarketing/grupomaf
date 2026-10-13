@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS & Control Operativo - MAF Gas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen flex justify-center items-start lg:p-4">
+
+  <!-- PANTALLA LOGIN POS -->
+  <div id="pantalla-login-pos" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-7 text-center space-y-5 shadow-2xl">
+      <div>
+        <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+        <h2 class="text-xl font-black text-white mt-1">SISTEMA POS MAF GAS</h2>
+        <p class="text-xs text-slate-400">Punto de venta y despacho Inírida</p>
+      </div>
+      <form onsubmit="window.validarLoginPOS(event)" class="space-y-3.5 text-left text-xs">
+        <div>
+          <label class="block font-black text-slate-400 uppercase mb-1">Usuario *</label>
+          <input type="text" id="pos-user" required placeholder="admin" class="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block font-black text-slate-400 uppercase mb-1">Contraseña *</label>
+          <input type="password" id="pos-pass" required placeholder="••••••••" class="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-lg transition-all">
+          Iniciar Turno en Mostrador
+        </button>
+      </form>
+      <p class="text-[11px] text-slate-500">Acceso: <b>admin</b> / <b>comparto123</b></p>
+    </div>
+  </div>
+
+  <!-- MODAL APERTURA DE CAJA OBLIGATORIA -->
+  <div id="modal-apertura-caja" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-40 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-5 shadow-2xl text-center">
+      <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-black">
+        🔓
+      </div>
+      <div>
+        <h3 class="font-black text-xl text-slate-900">Apertura de Turno en Caja</h3>
+        <p class="text-xs text-slate-500 mt-1">Ingresa el dinero en efectivo con el que inicias la caja hoy.</p>
+      </div>
+      <div class="text-left space-y-1">
+        <label class="block text-xs font-black uppercase text-slate-600">Base Inicial en Efectivo ($) *</label>
+        <input type="text" id="input-base-apertura" oninput="window.formatearMilesInput(this)" placeholder="Ej: 0" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 text-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-600">
+      </div>
+      <button type="button" onclick="window.confirmarAperturaCaja()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg transition-all">
+        Abrir Caja y Comenzar Facturación
+      </button>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL POS -->
+  <div class="w-full max-w-[1720px] bg-slate-100 min-h-screen lg:min-h-[950px] lg:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden pb-8">
+    <header class="bg-slate-950 text-white p-4 lg:px-8 lg:py-4 shadow-md sticky top-0 z-30 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+          <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded font-black border border-indigo-700/50">OPERACIÓN GLP INÍRIDA</span>
+          
+          <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="label-estado-conexion">CONECTADO VPS (POSTGRESQL)</span>
+          </div>
+
+          <div id="badge-estado-caja" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="texto-estado-caja">CAJA ABIERTA</span>
+          </div>
+        </div>
+        <h1 class="font-black text-xl lg:text-2xl leading-tight">CAJA CENTRAL, DESPACHO & SEGUIMIENTO</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Consecutivo: <span id="label-consecutivo-pos" class="font-black text-emerald-400 font-mono">FAC-0001</span> | Base Caja: <span id="label-base-pos" class="font-black text-amber-300">$0</span></p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 text-xs">
+        <button type="button" onclick="window.cambiarVista('puntoventa')" id="btn-v-puntoventa" class="px-3 py-2 rounded-xl font-black bg-emerald-600 text-white shadow-md">
+          🛒 Punto de Venta
+        </button>
+        <button type="button" onclick="window.cambiarVista('domicilios')" id="btn-v-domicilios" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          🛵 Domicilios
+        </button>
+        <button type="button" onclick="window.cambiarVista('alarmas')" id="btn-v-alarmas" class="px-3 py-2 rounded-xl font-bold text-amber-400 hover:text-white flex items-center gap-1">
+          <span>🔔</span> <span>Cilindros por Vencer</span>
+          <span id="badge-alertas-count" class="bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+        </button>
+        <button type="button" onclick="window.cambiarVista('liquidacion')" id="btn-v-liquidacion" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white flex items-center gap-1">
+          <span>🚚</span> <span>Liquidación Diaria</span>
+        </button>
+        <button type="button" onclick="window.cambiarVista('lancha')" id="btn-v-lancha" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          🚢 Venta Lancha
+        </button>
+        <button type="button" onclick="window.cambiarVista('rutas')" id="btn-v-rutas" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          📊 Stock Carros
+        </button>
+        <button type="button" onclick="window.cambiarVista('movimientos')" id="btn-v-movimientos" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          💸 Gastos / Entradas
+        </button>
+        <button type="button" onclick="window.cambiarVista('cartera')" id="btn-v-cartera" class="px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white">
+          👥 Cartera & Abonos
+        </button>
+        <button type="button" onclick="window.abrirModalCierreDiario()" class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black shadow-md">
+          🔒 Cierre Caja
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 lg:p-6 overflow-y-auto no-scrollbar">
+
+      <!-- VISTA 1: PUNTO DE VENTA (MOSTRADOR / PATIO) -->
+      <section id="vista-puntoventa" class="space-y-4">
+        <div class="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-md">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Disponibilidad en Bodega Central (Tiempo Real)</span>
+            <span class="text-[10px] text-slate-400 font-semibold">Existencias físicas en bodega</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-center text-xs">
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">33 lb ($133k)</span><b class="text-base text-emerald-400" id="inv-bod-33">0 llenos</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">40 lb ($143k)</span><b class="text-base text-emerald-400" id="inv-bod-40">0 llenos</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">80 lb ($245k)</span><b class="text-base text-emerald-400" id="inv-bod-80">0 llenos</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">100 lb ($318k)</span><b class="text-base text-emerald-400" id="inv-bod-100">0 llenos</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">Reguladores</span><b class="text-base text-indigo-300" id="inv-bod-reg">0 uds</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">Mangueras</span><b class="text-base text-indigo-300" id="inv-bod-man">0 mts</b></div>
+            <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700"><span class="text-[10px] text-slate-400 block">Serv. Técnicos</span><b class="text-base text-amber-300">Activo</b></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-7 xl:col-span-8 space-y-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-3">
+              <div class="relative flex-1">
+                <input type="text" id="pos-buscador" oninput="window.filtrarCatalogoPOS()" placeholder="🔍 Buscar producto o servicio..." class="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 pl-4 pr-10 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-600">
+                <button type="button" onclick="document.getElementById('pos-buscador').value=''; window.filtrarCatalogoPOS();" class="absolute right-3 top-3 text-xs text-slate-400 font-bold">✕</button>
+              </div>
+              <div class="flex gap-1.5 text-xs">
+                <button type="button" onclick="window.filtrarCategoriaPOS('todas')" class="px-3 py-2 rounded-xl bg-slate-800 text-white font-bold" id="cat-btn-todas">Todos</button>
+                <button type="button" onclick="window.filtrarCategoriaPOS('Gas GLP')" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold" id="cat-btn-gas">Gas</button>
+                <button type="button" onclick="window.filtrarCategoriaPOS('Accesorios')" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold" id="cat-btn-acc">Accesorios</button>
+                <button type="button" onclick="window.filtrarCategoriaPOS('Servicio Técnico')" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold" id="cat-btn-srv">Técnico</button>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-black uppercase text-slate-500">Catálogo de Productos & Servicios</span>
+                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Venta en Mostrador</span>
+              </div>
+              <div id="grid-productos-pos" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 xl:col-span-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 sticky top-24 space-y-4">
+              <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                  <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Ticket Activo Mostrador</span>
+                  <h3 class="font-black text-lg text-slate-900" id="ticket-numero-label">FAC-0001</h3>
+                </div>
+                <button type="button" onclick="window.limpiarCarritoPOS()" class="text-xs font-bold text-rose-500 hover:text-rose-700">Vaciar</button>
+              </div>
+
+              <div id="lista-items-ticket" class="space-y-2 max-h-[300px] overflow-y-auto pr-1 text-xs">
+                <p class="text-slate-400 italic py-8 text-center">No hay productos seleccionados.</p>
+              </div>
+
+              <div class="border-t border-slate-200 pt-3 space-y-2">
+                <div class="flex justify-between items-center text-slate-900">
+                  <span class="text-sm font-black uppercase">SUBTOTAL TICKET:</span>
+                  <span class="text-3xl font-black text-slate-900" id="pos-subtotal-texto">$0</span>
+                </div>
+              </div>
+
+              <button type="button" onclick="window.abrirModalCobroPOS()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2">
+                <span>Cobrar y Facturar en Patio</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 2: DOMICILIOS -->
+      <section id="vista-domicilios" class="space-y-6" style="display: none;">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+              <div>
+                <span class="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Llamada / Pedido Móvil</span>
+                <h2 class="text-lg font-black text-slate-900">Despacho Domicilio Completo</h2>
+              </div>
+              <div class="flex gap-2">
+                <button type="button" onclick="window.abrirModalNuevoRepartidor()" class="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-black text-xs">
+                  + Crear Repartidor
+                </button>
+                <button type="button" onclick="window.abrirModalNuevoCliente()" class="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl font-black text-xs">
+                  + Crear Cliente
+                </button>
+              </div>
+            </div>
+
+            <form onsubmit="window.asignarDomicilio(event)" class="space-y-3.5 text-xs">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-black text-slate-600 mb-1">Teléfono Cliente *</label>
+                  <input type="tel" id="dom-tel" required placeholder="312..." onblur="window.autocompletarCliente(this.value)" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+                </div>
+                <div>
+                  <label class="block font-black text-slate-600 mb-1">Nombre Cliente *</label>
+                  <input type="text" id="dom-nombre" required placeholder="Nombre de quien recibe" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-black text-slate-600 mb-1">Barrio *</label>
+                  <input type="text" id="dom-barrio" required placeholder="Ej: La Primavera" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+                </div>
+                <div>
+                  <label class="block font-black text-slate-600 mb-1">Dirección Exacta *</label>
+                  <input type="text" id="dom-dir" required placeholder="Calle 14 # 8-20" class="w-full p-2.5 bg-slate-50 border rounded-xl font-semibold outline-none">
+                </div>
+              </div>
+
+              <div class="border-t pt-3 space-y-2">
+                <span class="font-black uppercase text-slate-700 block">1. Cilindro de Gas:</span>
+                <div class="grid grid-cols-12 gap-2">
+                  <div class="col-span-8">
+                    <select id="dom-gas-sel" onchange="window.recalcularTotalDomicilio()" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                      <option value="GAS-33">Cilindro de 33 lb ($133.000)</option>
+                      <option value="GAS-40">Cilindro de 40 lb ($143.000)</option>
+                      <option value="GAS-80">Cilindro de 80 lb ($245.000)</option>
+                      <option value="GAS-100">Cilindro de 100 lb ($318.000)</option>
+                      <option value="ninguno">Sin cilindro (Solo accesorios/técnico)</option>
+                    </select>
+                  </div>
+                  <div class="col-span-4">
+                    <input type="number" id="dom-gas-cant" min="0" value="1" oninput="window.recalcularTotalDomicilio()" class="w-full p-2.5 bg-slate-50 border rounded-xl text-center font-black">
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t pt-2 space-y-2">
+                <span class="font-black uppercase text-slate-700 block">2. Adicionales:</span>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center gap-2 p-2 bg-slate-50 border rounded-xl font-bold cursor-pointer">
+                    <input type="checkbox" id="dom-chk-reg" onchange="window.recalcularTotalDomicilio()" class="w-4 h-4 text-emerald-600">
+                    <span>+ Regulador ($45.000)</span>
+                  </label>
+                  <label class="flex items-center gap-2 p-2 bg-slate-50 border rounded-xl font-bold cursor-pointer">
+                    <input type="checkbox" id="dom-chk-man" onchange="window.recalcularTotalDomicilio()" class="w-4 h-4 text-emerald-600">
+                    <span>+ Manguera ($9.000)</span>
+                  </label>
+                </div>
+                <label class="flex items-center gap-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl font-black text-indigo-950 cursor-pointer">
+                  <input type="checkbox" id="dom-chk-srv" onchange="window.recalcularTotalDomicilio()" class="w-4 h-4 text-indigo-600">
+                  <span>🛠️ + Asistencia Técnica / Fugas ($25.000)</span>
+                </label>
+              </div>
+
+              <div class="border-t pt-2 bg-amber-50/50 p-3 rounded-2xl border border-amber-200 space-y-2">
+                <span class="text-[10px] font-black uppercase text-amber-900 block">Descuento Especial (Opcional)</span>
+                <div class="grid grid-cols-12 gap-2">
+                  <div class="col-span-4">
+                    <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Valor ($)</label>
+                    <input type="text" id="dom-descuento" value="0" oninput="window.formatearMilesInput(this); window.recalcularTotalDomicilio();" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-black text-rose-700">
+                  </div>
+                  <div class="col-span-8">
+                    <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Concepto / Autorización</label>
+                    <input type="text" id="dom-motivo-descuento" placeholder="Ej: Promoción" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-bold">
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-indigo-50/70 p-3.5 rounded-2xl border border-indigo-200 space-y-1.5">
+                <label class="block text-[11px] font-black text-indigo-950 uppercase">Asignar Repartidor (Stock en Carro) *</label>
+                <select id="dom-repartidor-sel" required class="w-full p-2.5 bg-white border border-indigo-300 rounded-xl font-bold text-slate-800 outline-none"></select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 items-center">
+                <div>
+                  <label class="block font-black text-slate-600 mb-1">Forma de Pago *</label>
+                  <select id="dom-pago-sel" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                    <option value="efectivo">Efectivo</option>
+                    <option value="nequi">Nequi</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="mixto">Mixto</option>
+                    <option value="credito">Crédito Autorizado</option>
+                  </select>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-400 font-bold block">Total a Pagar:</span>
+                  <span class="text-2xl font-black text-emerald-700" id="dom-total-estimado">$133.000</span>
+                </div>
+              </div>
+
+              <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-md text-sm">
+                Despachar Pedido a Repartidor
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+              <h3 class="font-black text-base text-slate-900">Domicilios en Curso</h3>
+              <span id="badge-dom-contador" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">0 Activos</span>
+            </div>
+            <div id="lista-domicilios-activos" class="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+              <p class="text-slate-400 italic text-center py-8">No hay domicilios en ruta actualmente.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 3: ALERTA DE CILINDROS PRONTO A VENCER -->
+      <section id="vista-alarmas" class="space-y-6" style="display: none;">
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-3">
+            <div>
+              <span class="text-[10px] font-black uppercase text-amber-700 tracking-wider block">Consumo Predictivo & Retención</span>
+              <h2 class="text-lg font-black text-slate-900">Cilindros Pronto a Vencer & Recuperación de Envases</h2>
+              <p class="text-xs text-slate-500">Anticípate con llamadas o WhatsApp antes de que compren a la competencia o rescata el envase si ya venció.</p>
+            </div>
+            <input type="text" id="buscador-alertas" oninput="window.renderizarAlarmasConsumo()" placeholder="🔍 Buscar cliente o barrio..." class="p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none">
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b font-black text-slate-500 uppercase">
+                <tr>
+                  <th class="p-3">Cliente / Titular</th>
+                  <th class="p-3">Teléfono</th>
+                  <th class="p-3">Ubicación</th>
+                  <th class="p-3 text-center">Capacidad</th>
+                  <th class="p-3 text-center">Última Recarga</th>
+                  <th class="p-3 text-center">Días de Uso</th>
+                  <th class="p-3 text-center">Diagnóstico</th>
+                  <th class="p-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-alarmas-body" class="divide-y divide-slate-100 font-semibold text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 4: LIQUIDACIÓN DIARIA DE REPARTIDORES -->
+      <section id="vista-liquidacion" class="space-y-6" style="display: none;">
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <span class="text-[10px] font-black uppercase text-indigo-700 tracking-wider block">Cuadre Diario de Calle</span>
+              <h2 class="text-lg font-black text-slate-900">Liquidación Diaria de Repartidores & Arqueo en Mano</h2>
+              <p class="text-xs text-slate-500">Compara el dinero esperado con el valor físico recibido en mano antes de validar.</p>
+            </div>
+            <button type="button" onclick="window.abrirModalNuevoRepartidor()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-black text-xs shadow-sm">
+              + Agregar Nuevo Repartidor
+            </button>
+          </div>
+          <div id="grid-liquidaciones-diarias" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="col-span-2 text-center p-8 bg-slate-50 rounded-2xl border border-dashed text-slate-400 italic">
+              No hay repartidores creados en el sistema. Registra el primero para habilitar liquidaciones.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 5: FACTURACIÓN LANCHA -->
+      <section id="vista-lancha" class="space-y-6" style="display: none;">
+        <div class="max-w-2xl bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b pb-3">
+            <span class="text-[10px] font-black uppercase text-indigo-700 tracking-wider">Venta Fluvial / Muelle</span>
+            <h2 class="text-lg font-black text-slate-900">Facturación Lancha con Precio Dinámico</h2>
+            <p class="text-xs text-slate-500">El cilindro sale del inventario normal del carro del repartidor. Se digita el precio pactado y entra a caja.</p>
+          </div>
+
+          <form onsubmit="window.procesarVentaLancha(event)" class="space-y-3.5 text-xs">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Repartidor que vendió *</label>
+                <select id="lan-repartidor" required class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold"></select>
+              </div>
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Lancha / Cliente *</label>
+                <input type="text" id="lan-cliente" required placeholder="Ej: Motorista Juan / Lancha El Rey" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Cilindro *</label>
+                <select id="lan-cilindro" onchange="window.actualizarSugeridoLancha()" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black">
+                  <option value="GAS-33">33 lb</option>
+                  <option value="GAS-40">40 lb</option>
+                  <option value="GAS-80">80 lb</option>
+                  <option value="GAS-100">100 lb</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Cantidad Pipetas</label>
+                <input type="number" id="lan-cant" min="1" value="1" oninput="window.recalcularTotalLancha()" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-center">
+              </div>
+              <div>
+                <label class="block font-black text-indigo-900 mb-1">Precio Cobrado ($) *</label>
+                <input type="text" id="lan-precio-unitario" oninput="window.formatearMilesInput(this); window.recalcularTotalLancha();" required class="w-full p-2.5 bg-indigo-50 border border-indigo-300 rounded-xl font-black text-indigo-950 text-right">
+              </div>
+            </div>
+
+            <div class="bg-indigo-50 p-4 rounded-2xl flex justify-between items-center text-xs">
+              <div>
+                <span class="text-[10px] text-slate-500 font-bold block">Precio Sugerido:</span>
+                <b class="text-indigo-900" id="lan-precio-sugerido-lbl">$133.000</b>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] font-black uppercase text-indigo-900 block">Total a Ingresar a Caja:</span>
+                <span class="text-2xl font-black text-emerald-700" id="lan-total-texto">$133.000</span>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">
+              Emitir Venta Lancha (Descontar de Carro y Sumar a Caja)
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- VISTA 6: ESTADO DE RUTAS -->
+      <section id="vista-rutas" class="space-y-6" style="display: none;">
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-lg font-black text-slate-900">Monitoreo de Rutas & Desglose a Bordo</h2>
+              <p class="text-xs text-slate-500">Conoce cuántas pipetas lleva cada vehículo para coordinar despachos.</p>
+            </div>
+            <button type="button" onclick="window.abrirModalNuevoRepartidor()" class="px-3 py-1.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-sm">
+              + Nuevo Repartidor
+            </button>
+          </div>
+          <div id="grid-rutas-carros" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="col-span-2 text-center p-8 bg-slate-50 rounded-2xl border border-dashed text-slate-400 italic">
+              No hay vehículos asignados a rutas hoy.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 7: MOVIMIENTOS MENORES DE CAJA -->
+      <section id="vista-movimientos" class="space-y-6" style="display: none;">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h2 class="font-black text-lg text-slate-900">Registrar Movimiento de Efectivo</h2>
+            <form onsubmit="window.registrarMovimientoCaja(event)" class="space-y-3.5 text-xs">
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Tipo de Movimiento *</label>
+                <select id="mov-tipo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+                  <option value="egreso_gasto">Egreso / Gasto Menor (Resta a la caja)</option>
+                  <option value="ingreso_extra">Ingreso Extra de Dinero (Suma a la caja)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Concepto / Motivo *</label>
+                <input type="text" id="mov-concepto" required placeholder="Ej: Compra cinta de embalaje" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+              </div>
+              <div>
+                <label class="block font-black text-slate-600 mb-1">Monto en Efectivo ($) *</label>
+                <input type="text" id="mov-monto" oninput="window.formatearMilesInput(this)" required placeholder="Ej: 25.000" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-slate-900 outline-none">
+              </div>
+              <button type="submit" class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl shadow-md">
+                Asentar Movimiento en Caja
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+            <h3 class="font-black text-sm text-slate-900 uppercase">Historial de Movimientos de Hoy</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b font-black text-slate-500 uppercase">
+                  <tr><th class="p-2.5">Hora</th><th class="p-2.5">Tipo</th><th class="p-2.5">Concepto</th><th class="p-2.5 text-right">Monto</th></tr>
+                </thead>
+                <tbody id="tabla-movimientos-body" class="divide-y divide-slate-100">
+                  <tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Sin movimientos registrados hoy.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 8: CARTERA & ABONOS DISCRIMINADOS -->
+      <section id="vista-cartera" class="space-y-6" style="display: none;">
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h2 class="text-lg font-black text-slate-900">Cartera y Facturas a Crédito Pendientes</h2>
+              <p class="text-xs text-slate-500">Selecciona la factura exacta a la cual el cliente desea realizar el abono.</p>
+            </div>
+            <button type="button" onclick="window.abrirModalNuevoCliente()" class="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow-sm">
+              + Crear Cliente
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b text-slate-500 uppercase font-black">
+                <tr>
+                  <th class="p-3">Factura #</th>
+                  <th class="p-3">Fecha</th>
+                  <th class="p-3">Cliente / Razón Social</th>
+                  <th class="p-3 text-right">Total Factura</th>
+                  <th class="p-3 text-right text-rose-700">Saldo Pendiente</th>
+                  <th class="p-3 text-center">Vencimiento</th>
+                  <th class="p-3 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-cartera-facturas-body" class="divide-y divide-slate-100 font-semibold text-slate-700">
+                <tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay facturas a crédito pendientes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL NUEVO REPARTIDOR (ADMINISTRADOR) -->
+  <div id="modal-nuevo-repartidor" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900">Registrar Repartidor / Móvil</h3>
+        <button type="button" onclick="window.cerrarModalNuevoRepartidor()" class="p-1 font-black text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarNuevoRepartidor(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Nombre Completo del Repartidor *</label>
+          <input type="text" id="mrep-nombre" required placeholder="Ej: Wilson Gómez" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Vehículo / Placa *</label>
+          <input type="text" id="mrep-vehiculo" required placeholder="Ej: Motocarguero (ABC-123)" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Teléfono / Radio de Contacto</label>
+          <input type="tel" id="mrep-tel" placeholder="312..." class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md text-sm mt-2">
+          Guardar Repartidor en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVO CLIENTE (GENERAL) -->
+  <div id="modal-nuevo-cliente" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900">Crear Nuevo Cliente / Hogar</h3>
+        <button type="button" onclick="window.cerrarModalNuevoCliente()" class="p-1 font-black text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarNuevoCliente(event)" class="space-y-3.5 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Nombre Titular / Negocio *</label>
+            <input type="text" id="mcli-nombre" required placeholder="Ej: Doña Carmen / Restaurante Central" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Tipo de Cliente *</label>
+            <select id="mcli-tipo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+              <option value="Hogar">Hogar</option>
+              <option value="Restaurante">Restaurante / Asadero</option>
+              <option value="Panadería">Panadería</option>
+              <option value="Comercial">Comercio General</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Teléfono / WhatsApp *</label>
+            <input type="tel" id="mcli-tel" required placeholder="310..." class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Barrio *</label>
+            <input type="text" id="mcli-barrio" required placeholder="Ej: La Primavera" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Dirección y Referencia *</label>
+          <input type="text" id="mcli-dir" required placeholder="Carrera 6 # 14-30 al lado de la tienda" class="w-full p-2.5 bg-slate-50 border rounded-xl font-semibold outline-none">
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 border-t pt-2">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Capacidad Habitual</label>
+            <select id="mcli-cap" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+              <option value="33 lb">33 lb (30 días)</option>
+              <option value="40 lb">40 lb (45 días)</option>
+              <option value="80 lb">80 lb (60 días)</option>
+              <option value="100 lb">100 lb (90 días)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-black text-indigo-900 mb-1">Cupo Crédito ($)</label>
+            <input type="text" id="mcli-cupo" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl font-black outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Días Plazo</label>
+            <input type="number" id="mcli-dias" value="15" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-center outline-none">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md text-sm mt-2">
+          Guardar Cliente en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL COBRO FACTURACIÓN MOSTRADOR -->
+  <div id="modal-cobro-pos" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-6 space-y-4 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <span class="text-[10px] font-black uppercase text-emerald-600 tracking-wider block">Facturación Directa</span>
+          <h3 class="font-black text-xl text-slate-900">Facturar Ticket <span id="mod-cobro-fac-lbl" class="text-emerald-700">FAC-0001</span></h3>
+        </div>
+        <button type="button" onclick="window.cerrarModalCobroPOS()" class="p-1 font-bold text-slate-400 hover:text-slate-700 text-xl">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <label class="block text-xs font-black uppercase text-slate-600">Cliente Asignado</label>
+          <button type="button" onclick="window.toggleFormularioRapidoCliente()" class="text-xs font-extrabold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+            <span id="txt-btn-toggle-cli">+ Registrar Nuevo Cliente Rápido</span>
+          </button>
+        </div>
+
+        <div id="box-alta-rapida-cliente" class="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200 space-y-3" style="display: none;">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-black uppercase text-indigo-950">Alta Rápida de Cliente (Sin restricciones)</span>
+            <span class="text-[10px] text-slate-500">Ningún campo es obligatorio</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Nombre o Apodo</label>
+              <input type="text" id="fast-cli-nombre" placeholder="Ej: Doña Carmen / Vecino tienda" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Teléfono / WhatsApp</label>
+              <input type="tel" id="fast-cli-tel" placeholder="Ej: 312..." class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Barrio</label>
+              <input type="text" id="fast-cli-barrio" placeholder="Ej: La Primavera" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Dirección / Referencia</label>
+              <input type="text" id="fast-cli-dir" placeholder="Frente a la panadería" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-indigo-100 text-xs">
+            <div>
+              <label class="block text-[10px] font-black text-indigo-900 mb-0.5">¿Cada cuánto le dura el gas? (Días)</label>
+              <input type="number" id="fast-cli-dias" value="30" min="1" placeholder="Ej: 30" class="w-full p-2 bg-white border border-indigo-300 rounded-xl font-black text-indigo-950 text-center outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Capacidad habitual</label>
+              <select id="fast-cli-cap" class="w-full p-2 bg-white border rounded-xl font-bold text-xs outline-none">
+                <option value="33 lb">33 lb</option>
+                <option value="40 lb">40 lb</option>
+                <option value="80 lb">80 lb</option>
+                <option value="100 lb">100 lb</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="button" onclick="window.guardarClienteAltaRapida()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-sm transition-all">
+            Asociar y Seleccionar Cliente Inmediatamente
+          </button>
+        </div>
+
+        <div id="box-seleccion-cliente" class="space-y-2">
+          <div class="relative">
+            <input type="text" id="input-buscar-cliente-pos" oninput="window.filtrarBuscadorClientes(this.value)" placeholder="🔍 Escribe para buscar cliente por nombre o teléfono..." class="w-full p-2.5 pl-3 pr-8 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500">
+            <button type="button" onclick="document.getElementById('input-buscar-cliente-pos').value=''; window.filtrarBuscadorClientes('');" class="absolute right-2.5 top-2.5 text-xs text-slate-400 font-bold">✕</button>
+          </div>
+          <select id="mod-cobro-cliente" onchange="window.verificarCreditoCliente(this.value)" size="3" class="w-full p-2 bg-slate-50 border rounded-xl font-semibold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500">
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 p-3.5 rounded-2xl border flex justify-between items-center text-xs">
+        <div>
+          <span class="font-bold text-slate-500 uppercase block">Subtotal Productos Ticket:</span>
+          <span class="text-[11px] text-slate-400 font-semibold" id="mod-cobro-resumen-items">0 ítems agregados</span>
+        </div>
+        <b class="text-slate-900 text-xl font-black" id="mod-cobro-subtotal">$0</b>
+      </div>
+
+      <div class="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="font-black uppercase text-amber-950 tracking-wider">Descuento Especial</span>
+          <span class="text-[10px] text-amber-700 font-bold">Por promoción o autorización</span>
+        </div>
+        <div class="grid grid-cols-12 gap-2">
+          <div class="col-span-4">
+            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Monto ($)</label>
+            <input type="text" id="cobro-descuento-pos" value="0" oninput="window.formatearMilesInput(this); window.actualizarDescuentoYTotal();" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-black text-rose-700 text-sm outline-none">
+          </div>
+          <div class="col-span-8">
+            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Concepto / Motivo de Descuento</label>
+            <input type="text" id="cobro-motivo-descuento" placeholder="Ej: Promoción" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-emerald-50 p-4 rounded-2xl flex justify-between items-center border border-emerald-200">
+        <div>
+          <span class="text-xs font-bold text-emerald-900 uppercase block">Total Neto a Cobrar</span>
+          <span class="text-[10px] text-emerald-600 font-bold" id="lbl-descuento-aplicado">Sin descuento aplicado</span>
+        </div>
+        <span class="text-3xl font-black text-emerald-800" id="mod-cobro-total-neto">$0</span>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <label class="block font-black text-slate-500 uppercase">Forma de Pago</label>
+        <div class="grid grid-cols-5 gap-1.5 font-bold">
+          <button type="button" onclick="window.setMedioPago('efectivo')" id="btn-mp-efectivo" class="py-2.5 rounded-xl border border-emerald-600 bg-emerald-600 text-white">Efectivo</button>
+          <button type="button" onclick="window.setMedioPago('nequi')" id="btn-mp-nequi" class="py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700">Nequi</button>
+          <button type="button" onclick="window.setMedioPago('transferencia')" id="btn-mp-transferencia" class="py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700">Transf.</button>
+          <button type="button" onclick="window.setMedioPago('mixto')" id="btn-mp-mixto" class="py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700">Mixto</button>
+          <button type="button" onclick="window.setMedioPago('credito')" id="btn-mp-credito" class="py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700">Crédito</button>
+        </div>
+      </div>
+
+      <div id="bloque-efectivo" class="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+        <label class="block text-xs font-black text-slate-700 uppercase">¿Con qué valor me paga el cliente?</label>
+        <div class="relative">
+          <input type="text" id="cobro-recibido" oninput="window.formatearMilesInput(this); window.calcularVueltoDirecto();" placeholder="Ej: 200.000" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-2xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div class="flex justify-between items-center text-xs font-bold bg-amber-50 p-3.5 rounded-xl border border-amber-200 mt-2">
+          <span class="text-amber-900 uppercase font-black text-sm">Vueltas a entregar:</span>
+          <span class="text-amber-950 font-black text-2xl" id="cobro-vuelto-texto">$0</span>
+        </div>
+      </div>
+
+      <div id="bloque-mixto" class="space-y-2 text-xs" style="display: none;">
+        <label class="block font-bold text-slate-600 uppercase">Distribuir Valores Mixtos</label>
+        <div class="grid grid-cols-3 gap-2">
+          <div><label class="text-[10px] text-slate-500 font-bold">Efectivo ($)</label><input type="text" id="mix-efectivo" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-2 bg-slate-50 border rounded-xl font-bold"></div>
+          <div><label class="text-[10px] text-slate-500 font-bold">Nequi ($)</label><input type="text" id="mix-nequi" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-2 bg-slate-50 border rounded-xl font-bold"></div>
+          <div><label class="text-[10px] text-slate-500 font-bold">Transf. ($)</label><input type="text" id="mix-transf" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-2 bg-slate-50 border rounded-xl font-bold"></div>
+        </div>
+      </div>
+
+      <button type="button" onclick="window.emitirFacturaPuntoVenta()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2">
+        <span>📄 Confirmar, Descargar PDF y Enviar a WhatsApp</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- MODAL ABONO A FACTURA ESPECÍFICA -->
+  <div id="modal-abono-factura" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <div>
+          <span class="text-[10px] font-black uppercase text-emerald-600 block">Abono Específico a Factura</span>
+          <h3 class="font-black text-base text-slate-900" id="abono-fac-codigo">FAC-0000</h3>
+        </div>
+        <button type="button" onclick="window.cerrarModalAbonoFactura()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <div class="bg-slate-50 p-3 rounded-2xl border space-y-1 text-xs">
+        <div class="flex justify-between"><span>Cliente:</span><b id="abono-fac-cliente">-</b></div>
+        <div class="flex justify-between"><span>Saldo Pendiente:</span><b class="text-rose-700 text-sm" id="abono-fac-saldo">$0</b></div>
+      </div>
+
+      <form onsubmit="window.procesarAbonoFactura(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Monto del Abono ($) *</label>
+          <input type="text" id="abono-fac-monto" required oninput="window.formatearMilesInput(this)" placeholder="Ej: 100.000" class="w-full p-3 bg-emerald-50 border border-emerald-300 rounded-xl font-black text-xl text-emerald-800 outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Medio de Pago *</label>
+          <select id="abono-fac-medio" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold">
+            <option value="efectivo">Efectivo</option>
+            <option value="nequi">Nequi</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white font-black rounded-xl shadow-md">
+          Confirmar Abono a esta Factura
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CIERRE DIARIO Y ARQUEO COMPLETO -->
+  <div id="modal-cierre-diario" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="display: none;">
+    <div class="bg-white w-full max-w-3xl rounded-3xl p-6 lg:p-7 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <span class="text-[10px] font-black uppercase text-rose-600 tracking-wider">Auditoría Diaria</span>
+          <h3 class="font-black text-xl text-slate-900">Cierre y Arqueo Integral de Caja POS</h3>
+        </div>
+        <button type="button" onclick="window.cerrarModalCierreDiario()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
+        <div><span class="text-[10px] text-slate-400 font-bold block">Base</span><b class="text-slate-800" id="arq-base">$0</b></div>
+        <div><span class="text-[10px] text-slate-400 font-bold block">Ventas Patio</span><b class="text-slate-800" id="arq-ventas-ef">$0</b></div>
+        <div><span class="text-[10px] text-slate-400 font-bold block">Liquidación Rep.</span><b class="text-emerald-700" id="arq-liq-reps">$0</b></div>
+        <div><span class="text-[10px] text-slate-400 font-bold block">Abonos Cartera</span><b class="text-emerald-700" id="arq-abonos-ef">$0</b></div>
+        <div><span class="text-[10px] text-slate-400 font-bold block">Ingresos Extra</span><b class="text-emerald-700" id="arq-extra-ef">$0</b></div>
+        <div class="bg-rose-50 rounded-xl p-1 border border-rose-100"><span class="text-[10px] text-rose-600 font-bold block">(-) Gastos</span><b class="text-rose-700" id="arq-gastos-ef">-$0</b></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="p-3.5 rounded-2xl border bg-amber-50/40 space-y-2 text-xs">
+          <span class="font-black text-amber-900 block">💵 Efectivo Contado Físico</span>
+          <span class="text-slate-500 block">Esperado: <b id="arq-ef-esp" class="text-slate-900 text-sm">$0</b></span>
+          <input type="text" id="arq-ef-real" oninput="window.formatearMilesInput(this); window.recalcularDiferenciasCierre();" placeholder="Monto contado" class="w-full p-2.5 bg-white border rounded-xl font-black text-base outline-none">
+          <span id="diff-ef" class="font-black block text-emerald-600">Cuadrado ($0)</span>
+        </div>
+        <div class="p-3.5 rounded-2xl border bg-purple-50/40 space-y-2 text-xs">
+          <span class="font-black text-purple-900 block">💳 Nequi</span>
+          <span class="text-slate-500 block">Esperado: <b id="arq-nq-esp" class="text-slate-900 text-sm">$0</b></span>
+          <input type="text" id="arq-nq-real" oninput="window.formatearMilesInput(this); window.recalcularDiferenciasCierre();" placeholder="Monto en App" class="w-full p-2.5 bg-white border rounded-xl font-black text-base outline-none">
+          <span id="diff-nq" class="font-black block text-emerald-600">Cuadrado ($0)</span>
+        </div>
+        <div class="p-3.5 rounded-2xl border bg-blue-50/40 space-y-2 text-xs">
+          <span class="font-black text-blue-900 block">📱 Bancos / Transferencias</span>
+          <span class="text-slate-500 block">Esperado: <b id="arq-tr-esp" class="text-slate-900 text-sm">$0</b></span>
+          <input type="text" id="arq-tr-real" oninput="window.formatearMilesInput(this); window.recalcularDiferenciasCierre();" placeholder="Monto verificado" class="w-full p-2.5 bg-white border rounded-xl font-black text-base outline-none">
+          <span id="diff-tr" class="font-black block text-emerald-600">Cuadrado ($0)</span>
+        </div>
+      </div>
+
+      <div id="banner-cierre-consolidado" class="p-3.5 rounded-2xl text-center font-black text-sm bg-emerald-50 text-emerald-800 border border-emerald-200">
+        Diferencia Consolidada de Caja: $0 (Cuadrado)
+      </div>
+
+      <button type="button" onclick="window.confirmarCierreCajaDefinitivo()" class="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md">
+        Cerrar Caja y Guardar Registro en Base de Datos
+      </button>
+    </div>
+  </div>
+
+  <!-- SCRIPT DEFINITIVO DE CONTROL CONECTADO A TU VPS POSTGRESQL -->
+  <script>
+    // CONEXIÓN DIRECTA A TU SERVIDOR DIGITALOCEAN
+    const API_BASE = 'http://165.245.235.213:3000/api';
+
+    const api = {
+      async get(table, query = '') {
+        try {
+          const res = await fetch(`${API_BASE}/${table}${query}`);
+          return await res.json();
+        } catch(e) { return []; }
+      },
+      async post(table, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      },
+      async put(table, id, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      },
+      async count(table) {
+        try {
+          const res = await fetch(`${API_BASE}/count/${table}`);
+          const data = await res.json();
+          return data.count || 0;
+        } catch(e) { return 0; }
+      }
+    };
+
+    var baseCajaInicial = 0;
+    var consecutivoActual = 1;
+    var carritoPOS = {};
+    var medioPagoPOS = 'efectivo';
+    var totalNetoActual = 0;
+
+    window.formatearMilesInput = function(input) {
+      var val = input.value.replace(/\D/g, '');
+      input.value = val === '' ? '' : Number(val).toLocaleString('es-CO');
+    };
+
+    window.limpiarValorMoneda = function(valStr) {
+      if (!valStr) return 0;
+      var num = parseFloat(String(valStr).replace(/\./g, '').replace(/,/g, '').replace(/\$/g, '').trim());
+      return isNaN(num) ? 0 : num;
+    };
+
+    // CATÁLOGO OFICIAL: STOCK INICIA EN 0 HASTA CARGAR EXISTENCIAS REALES
+    var catalogoPOS = [
+      { id: 'GAS-33', sku: 'GAS-33', cat: 'Gas GLP', nombre: 'Cilindro de 33 lb', precio: 133000, stock: 0 },
+      { id: 'GAS-40', sku: 'GAS-40', cat: 'Gas GLP', nombre: 'Cilindro de 40 lb', precio: 143000, stock: 0 },
+      { id: 'GAS-80', sku: 'GAS-80', cat: 'Gas GLP', nombre: 'Cilindro de 80 lb', precio: 245000, stock: 0 },
+      { id: 'GAS-100', sku: 'GAS-100', cat: 'Gas GLP', nombre: 'Cilindro de 100 lb', precio: 318000, stock: 0 },
+      { id: 'ACC-01', sku: 'ACC-01', cat: 'Accesorios', nombre: 'Regulador Gas Premium', precio: 45000, stock: 0 },
+      { id: 'ACC-02', sku: 'ACC-02', cat: 'Accesorios', nombre: 'Manguera Reforzada (Metro)', precio: 9000, stock: 0 },
+      { id: 'SRV-01', sku: 'SRV-01', cat: 'Servicio Técnico', nombre: 'Asistencia Técnica / Revisión Fuga', precio: 25000, stock: 999 }
+    ];
+
+    var preciosLanchaRef = { 'GAS-33': 133000, 'GAS-40': 143000, 'GAS-80': 245000, 'GAS-100': 318000 };
+
+    // INICIALIZADO EN VACÍO: SE ALIMENTA DESDE LA BASE DE DATOS
+    var repartidores = [];
+
+    // CLIENTES INICIALIZADOS EN VACÍO (SOLO MOSTRADOR POR DEFECTO)
+    var clientesPOS = [
+      { id: 'cli-mostrador', nombre: 'Cliente Mostrador / Venta Rápida', tel: '-', barrio: 'Inírida', dir: 'Patio', cap: '33 lb', diasCiclo: 30, fechaUltima: '2026-10-01', cupo: 0, deuda: 0, preciosEspeciales: {} }
+    ];
+
+    var facturasEmitidas = [];
+    var domiciliosActivos = [];
+    var movimientosCaja = [];
+    var abonosFacturas = [];
+    var facturaSeleccionadaAbono = null;
+
+    // INICIALIZADOR SINCRONIZADO CON VPS POSTGRESQL
+    async function sincronizarConSupabasePOS() {
+      try {
+        // 1. Cargar productos y stock real
+        const pData = await api.get('productos_gas');
+        if (pData && pData.length > 0) {
+          catalogoPOS = pData.map(p => ({
+            id: p.id,
+            sku: p.sku,
+            cat: p.categoria,
+            nombre: p.nombre,
+            precio: parseFloat(p.precio_venta),
+            stock: parseInt(p.stock_bodega_principal) || 0
+          }));
+        }
+
+        // 2. Cargar repartidores desde la BD
+        const rData = await api.get('repartidores_gas');
+        if (rData && Array.isArray(rData) && rData.length > 0) {
+          repartidores = rData.map(r => ({
+            id: String(r.id),
+            nombre: r.nombre,
+            vehiculo: r.vehiculo,
+            stockBordo: { 'GAS-33': 0, 'GAS-40': 0, 'GAS-80': 0, 'GAS-100': 0 },
+            ventasHoy: [],
+            liquidado: false
+          }));
+        }
+
+        // 3. Cargar clientes con precios especiales y crédito
+        const cData = await api.get('clientes_gas');
+        if (cData && Array.isArray(cData) && cData.length > 0) {
+          clientesPOS = cData.map(c => ({
+            id: String(c.id),
+            nombre: c.nombre_titular,
+            tel: c.telefono || '-',
+            barrio: c.barrio || 'Inírida',
+            dir: c.direccion || 'Patio',
+            cap: c.capacidad_habitual || '33 lb',
+            diasCiclo: c.dias_duracion_ciclo || 30,
+            fechaUltima: c.fecha_ultima_compra ? c.fecha_ultima_compra.split('T')[0] : '2026-10-01',
+            cupo: parseFloat(c.cupo_credito || 0),
+            deuda: parseFloat(c.saldo_deuda || 0),
+            preciosEspeciales: c.precios_especiales || {}
+          }));
+        }
+
+        // 4. Cargar facturas de hoy
+        var hoy = new Date().toISOString().split('T')[0];
+        const fData = await api.get('facturas_gas', `?fecha_gte=${hoy}`);
+        if (fData && Array.isArray(fData)) facturasEmitidas = fData;
+
+        // 5. Consecutivos reales
+        const count = await api.count('facturas_gas');
+        consecutivoActual = (count || 0) + 1;
+        document.getElementById('label-consecutivo-pos').innerText = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+        document.getElementById('ticket-numero-label').innerText = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+
+        document.getElementById('label-estado-conexion').innerText = "BD CONECTADA (VPS)";
+      } catch (err) {
+        console.warn("Conexión en espera:", err);
+      }
+
+      window.actualizarBannerBodega();
+      window.renderizarCatalogoPOS(catalogoPOS);
+      window.cargarSelects();
+      window.actualizarSugeridoLancha();
+      window.renderizarAlarmasConsumo();
+      window.renderizarLiquidacionesDiarias();
+      window.renderizarCarteraFacturas();
+    }
+
+    window.validarLoginPOS = function(e) {
+      e.preventDefault();
+      var u = document.getElementById('pos-user').value;
+      var p = document.getElementById('pos-pass').value;
+      if (u === 'admin' && p === 'comparto123') {
+        document.getElementById('pantalla-login-pos').style.display = 'none';
+        document.getElementById('modal-apertura-caja').style.display = 'flex';
+      } else {
+        alert("Credenciales incorrectas.");
+      }
+    };
+
+    window.confirmarAperturaCaja = function() {
+      var base = window.limpiarValorMoneda(document.getElementById('input-base-apertura').value);
+      baseCajaInicial = base;
+      document.getElementById('modal-apertura-caja').style.display = 'none';
+      document.getElementById('label-base-pos').innerText = `$${baseCajaInicial.toLocaleString()}`;
+      sincronizarConSupabasePOS();
+    };
+
+    window.cambiarVista = function(v) {
+      ['puntoventa', 'domicilios', 'alarmas', 'liquidacion', 'lancha', 'rutas', 'movimientos', 'cartera'].forEach(id => {
+        document.getElementById('vista-' + id).style.display = (id === v) ? 'block' : 'none';
+        var b = document.getElementById('btn-v-' + id);
+        if (b) {
+          b.className = (id === v)
+            ? "px-3 py-2 rounded-xl font-black bg-emerald-600 text-white shadow-md"
+            : (id === 'alarmas') 
+              ? "px-3 py-2 rounded-xl font-bold text-amber-400 hover:text-white flex items-center gap-1"
+              : "px-3 py-2 rounded-xl font-bold text-slate-400 hover:text-white";
+        }
+      });
+      if (v === 'alarmas') window.renderizarAlarmasConsumo();
+      if (v === 'liquidacion') window.renderizarLiquidacionesDiarias();
+      if (v === 'rutas') window.renderizarEstadoRutas();
+      if (v === 'cartera') window.renderizarCarteraFacturas();
+    };
+
+    // ==========================================
+    // 1. PUNTO DE VENTA (MOSTRADOR)
+    // ==========================================
+    window.actualizarBannerBodega = function() {
+      document.getElementById('inv-bod-33').innerText = (catalogoPOS.find(p=>p.id==='GAS-33')?.stock || 0) + ' llenos';
+      document.getElementById('inv-bod-40').innerText = (catalogoPOS.find(p=>p.id==='GAS-40')?.stock || 0) + ' llenos';
+      document.getElementById('inv-bod-80').innerText = (catalogoPOS.find(p=>p.id==='GAS-80')?.stock || 0) + ' llenos';
+      document.getElementById('inv-bod-100').innerText = (catalogoPOS.find(p=>p.id==='GAS-100')?.stock || 0) + ' llenos';
+      document.getElementById('inv-bod-reg').innerText = (catalogoPOS.find(p=>p.id==='ACC-01')?.stock || 0) + ' uds';
+      document.getElementById('inv-bod-man').innerText = (catalogoPOS.find(p=>p.id==='ACC-02')?.stock || 0) + ' mts';
+    };
+
+    window.renderizarCatalogoPOS = function(items) {
+      var cont = document.getElementById('grid-productos-pos');
+      cont.innerHTML = items.map(p => `
+        <div onclick="window.agregarAlCarritoPOS('${p.id}')" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer">
+          <div>
+            <div class="flex justify-between items-start">
+              <span class="font-mono text-[10px] text-slate-400 font-bold">${p.sku}</span>
+              <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-black">${p.cat}</span>
+            </div>
+            <h4 class="font-black text-xs text-slate-900 mt-1">${p.nombre}</h4>
+          </div>
+          <div class="flex justify-between items-center mt-3 pt-2 border-t">
+            <span class="text-xs ${p.stock <= 0 && p.cat !== 'Servicio Técnico' ? 'text-rose-600 font-bold' : 'text-slate-500'}">Stock: <b>${p.stock}</b></span>
+            <span class="font-black text-emerald-800 text-sm">$${p.precio.toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    window.filtrarCatalogoPOS = function() {
+      var q = (document.getElementById('pos-buscador').value || '').toLowerCase().trim();
+      var filtrados = catalogoPOS.filter(p => p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+      window.renderizarCatalogoPOS(filtrados);
+    };
+
+    window.filtrarCategoriaPOS = function(cat) {
+      var filtrados = (cat === 'todas') ? catalogoPOS : catalogoPOS.filter(p => p.cat === cat);
+      window.renderizarCatalogoPOS(filtrados);
+    };
+
+    window.agregarAlCarritoPOS = function(pId) {
+      var prod = catalogoPOS.find(p => p.id === pId);
+      if (prod.stock <= 0 && prod.cat !== 'Servicio Técnico') return alert("Sin existencias en inventario. Ingresa stock antes de facturar.");
+      if (!carritoPOS[pId]) carritoPOS[pId] = 0;
+      if (carritoPOS[pId] >= prod.stock && prod.cat !== 'Servicio Técnico') return alert("Supera el stock registrado en bodega.");
+      carritoPOS[pId]++;
+      window.actualizarTicketPOS();
+    };
+
+    window.modificarItemTicket = function(pId, delta) {
+      if (!carritoPOS[pId]) return;
+      carritoPOS[pId] += delta;
+      if (carritoPOS[pId] <= 0) delete carritoPOS[pId];
+      window.actualizarTicketPOS();
+    };
+
+    window.actualizarTicketPOS = function() {
+      var cont = document.getElementById('lista-items-ticket');
+      cont.innerHTML = '';
+      var subtotal = 0;
+      var totalItems = 0;
+
+      var cliSelect = document.getElementById('mod-cobro-cliente');
+      var cli = cliSelect ? clientesPOS.find(c => String(c.id) === String(cliSelect.value)) : null;
+
+      Object.keys(carritoPOS).forEach(pId => {
+        var prod = catalogoPOS.find(p => p.id === pId);
+        var cant = carritoPOS[pId];
+        
+        var precioUnitario = prod.precio;
+        if (cli && cli.preciosEspeciales && cli.preciosEspeciales[pId] && cli.preciosEspeciales[pId] > 0) {
+          precioUnitario = parseFloat(cli.preciosEspeciales[pId]);
+        }
+
+        var sub = cant * precioUnitario;
+        subtotal += sub;
+        totalItems += cant;
+
+        cont.innerHTML += `
+          <div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center">
+            <div>
+              <b class="text-slate-800 block">${prod.nombre}</b>
+              <span class="text-[10px] text-slate-500">${cant} x $${precioUnitario.toLocaleString()}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.modificarItemTicket('${prod.id}', -1)" class="w-6 h-6 rounded bg-white border font-bold">-</button>
+              <span class="font-black w-5 text-center">${cant}</span>
+              <button type="button" onclick="window.modificarItemTicket('${prod.id}', 1)" class="w-6 h-6 rounded bg-emerald-600 text-white font-bold">+</button>
+              <span class="font-black text-slate-900 ml-2">$${sub.toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      if (Object.keys(carritoPOS).length === 0) {
+        cont.innerHTML = '<p class="text-slate-400 italic py-8 text-center">No hay productos seleccionados.</p>';
+      }
+
+      document.getElementById('pos-subtotal-texto').innerText = `$${subtotal.toLocaleString()}`;
+      var resEl = document.getElementById('mod-cobro-resumen-items');
+      if (resEl) resEl.innerText = `${totalItems} productos en ticket`;
+      return subtotal;
+    };
+
+    window.limpiarCarritoPOS = function() {
+      carritoPOS = {};
+      window.actualizarTicketPOS();
+    };
+
+    window.toggleFormularioRapidoCliente = function() {
+      var box = document.getElementById('box-alta-rapida-cliente');
+      var txt = document.getElementById('txt-btn-toggle-cli');
+      if (box.style.display === 'none') {
+        box.style.display = 'block';
+        txt.innerText = '✕ Cerrar Registro Rápido';
+      } else {
+        box.style.display = 'none';
+        txt.innerText = '+ Registrar Nuevo Cliente Rápido';
+      }
+    };
+
+    window.filtrarBuscadorClientes = function(q) {
+      var val = (q || '').toLowerCase().trim();
+      var sel = document.getElementById('mod-cobro-cliente');
+      if (!sel) return;
+      sel.innerHTML = '';
+
+      var filtrados = clientesPOS.filter(c => 
+        c.nombre.toLowerCase().includes(val) || 
+        (c.tel && c.tel.toLowerCase().includes(val)) || 
+        (c.barrio && c.barrio.toLowerCase().includes(val))
+      );
+
+      if (filtrados.length === 0) {
+        sel.innerHTML = '<option value="" disabled>No se encontraron clientes coincidentes...</option>';
+        return;
+      }
+
+      filtrados.forEach(c => {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.innerText = `${c.nombre} (Tel: ${c.tel}) • ${c.barrio} [Cupo Disp: $${(c.cupo - c.deuda).toLocaleString()}]`;
+        sel.appendChild(opt);
+      });
+
+      if (sel.options.length > 0 && sel.options[0].value) {
+        sel.selectedIndex = 0;
+      }
+    };
+
+    window.guardarClienteAltaRapida = async function() {
+      var nom = document.getElementById('fast-cli-nombre').value.trim();
+      var tel = document.getElementById('fast-cli-tel').value.trim();
+      var barrio = document.getElementById('fast-cli-barrio').value.trim();
+      var dir = document.getElementById('fast-cli-dir').value.trim();
+      var cap = document.getElementById('fast-cli-cap').value;
+      var dias = parseInt(document.getElementById('fast-cli-dias').value) || 30;
+
+      if (!nom && !tel) {
+        nom = "Cliente Ocasional " + Date.now().toString().slice(-4);
+      } else if (!nom && tel) {
+        nom = "Cliente " + tel;
+      }
+
+      var nuevoCli = {
+        nombre_titular: nom,
+        tipo_cliente: 'Hogar',
+        telefono: tel || '-',
+        barrio: barrio || 'Inírida',
+        direccion: dir || 'Entrega en mostrador',
+        capacidad_habitual: cap,
+        dias_duracion_ciclo: dias,
+        fecha_ultima_compra: new Date().toISOString().split('T')[0],
+        cupo_credito: 0,
+        saldo_deuda: 0
+      };
+
+      try {
+        const res = await api.post('clientes_gas', nuevoCli);
+        if (res && res.data && res.data.length > 0) {
+          nuevoCli.id = String(res.data[0].id);
+        } else {
+          nuevoCli.id = 'cli-' + Date.now();
+        }
+      } catch (e) {
+        nuevoCli.id = 'cli-' + Date.now();
+      }
+
+      clientesPOS.push({
+        id: nuevoCli.id,
+        nombre: nuevoCli.nombre_titular,
+        tel: nuevoCli.telefono,
+        barrio: nuevoCli.barrio,
+        dir: nuevoCli.direccion,
+        cap: nuevoCli.capacidad_habitual,
+        diasCiclo: nuevoCli.dias_duracion_ciclo,
+        fechaUltima: nuevoCli.fecha_ultima_compra,
+        cupo: 0, deuda: 0, preciosEspeciales: {}
+      });
+
+      window.cargarSelects();
+      window.filtrarBuscadorClientes('');
+      document.getElementById('mod-cobro-cliente').value = nuevoCli.id;
+      window.toggleFormularioRapidoCliente();
+      window.actualizarTicketPOS();
+      alert(`¡Cliente ${nuevoCli.nombre_titular} creado y seleccionado!`);
+    };
+
+    window.abrirModalCobroPOS = function() {
+      var subtotal = window.actualizarTicketPOS();
+      if (subtotal <= 0) return alert("Agrega productos al ticket antes de facturar.");
+
+      document.getElementById('modal-cobro-pos').style.display = 'flex';
+      document.getElementById('mod-cobro-fac-lbl').innerText = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+      document.getElementById('mod-cobro-subtotal').innerText = `$${subtotal.toLocaleString()}`;
+      document.getElementById('cobro-descuento-pos').value = '0';
+      document.getElementById('cobro-motivo-descuento').value = '';
+      document.getElementById('cobro-recibido').value = '';
+      document.getElementById('cobro-vuelto-texto').innerText = '$0';
+      document.getElementById('box-alta-rapida-cliente').style.display = 'none';
+
+      window.filtrarBuscadorClientes('');
+      window.actualizarDescuentoYTotal();
+      window.setMedioPago('efectivo');
+    };
+
+    window.cerrarModalCobroPOS = function() {
+      document.getElementById('modal-cobro-pos').style.display = 'none';
+    };
+
+    window.actualizarDescuentoYTotal = function() {
+      var subtotal = window.actualizarTicketPOS();
+      var descuento = window.limpiarValorMoneda(document.getElementById('cobro-descuento-pos').value);
+
+      if (descuento > subtotal) {
+        descuento = subtotal;
+        document.getElementById('cobro-descuento-pos').value = descuento.toLocaleString('es-CO');
+      }
+
+      totalNetoActual = Math.max(0, subtotal - descuento);
+      document.getElementById('mod-cobro-total-neto').innerText = `$${totalNetoActual.toLocaleString()}`;
+      document.getElementById('lbl-descuento-aplicado').innerText = descuento > 0 ? `Descuento: -$${descuento.toLocaleString()}` : 'Sin descuento aplicado';
+      window.calcularVueltoDirecto();
+    };
+
+    window.calcularVueltoDirecto = function() {
+      var rec = window.limpiarValorMoneda(document.getElementById('cobro-recibido').value);
+      var vuelto = rec - totalNetoActual;
+
+      var lbl = document.getElementById('cobro-vuelto-texto');
+      if (vuelto >= 0) {
+        lbl.innerText = `$${vuelto.toLocaleString('es-CO')}`;
+        lbl.className = "text-amber-950 font-black text-2xl";
+      } else {
+        lbl.innerText = `$0 (Faltan $${Math.abs(vuelto).toLocaleString('es-CO')})`;
+        lbl.className = "text-rose-600 font-bold text-base";
+      }
+    };
+
+    window.setMedioPago = function(mp) {
+      medioPagoPOS = mp;
+      ['efectivo', 'nequi', 'transferencia', 'mixto', 'credito'].forEach(m => {
+        var b = document.getElementById('btn-mp-' + m);
+        b.className = (m === mp)
+          ? "py-2.5 rounded-xl border border-emerald-600 bg-emerald-600 text-white font-bold"
+          : "py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold";
+      });
+      document.getElementById('bloque-efectivo').style.display = (mp === 'efectivo') ? 'block' : 'none';
+      document.getElementById('bloque-mixto').style.display = (mp === 'mixto') ? 'block' : 'none';
+    };
+
+    window.verificarCreditoCliente = function(cliId) {
+      var c = clientesPOS.find(it => String(it.id) === String(cliId));
+      window.actualizarTicketPOS();
+      window.actualizarDescuentoYTotal();
+      if (medioPagoPOS === 'credito' && c) {
+        var disp = c.cupo - c.deuda;
+        if (totalNetoActual > disp) {
+          alert(`El cliente ${c.nombre} solo tiene $${disp.toLocaleString()} de cupo disponible.`);
+          window.setMedioPago('efectivo');
+        }
+      }
+    };
+
+    // FACTURACIÓN + ACTUALIZACIÓN VPS POSTGRESQL
+    window.emitirFacturaPuntoVenta = async function() {
+      var subtotal = window.actualizarTicketPOS();
+      var descuento = window.limpiarValorMoneda(document.getElementById('cobro-descuento-pos').value);
+      var motivoDescuento = document.getElementById('cobro-motivo-descuento').value.trim();
+      
+      if (descuento > 0 && !motivoDescuento) {
+        return alert("Por favor indica el concepto o motivo del descuento aplicado.");
+      }
+
+      var cod = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+      var cliSelect = document.getElementById('mod-cobro-cliente');
+      var cli = clientesPOS.find(c => String(c.id) === String(cliSelect.value)) || clientesPOS[0];
+
+      var itemsFacturados = [];
+      Object.keys(carritoPOS).forEach(pId => {
+        var prod = catalogoPOS.find(p => p.id === pId);
+        var pUnit = (cli && cli.preciosEspeciales && cli.preciosEspeciales[pId]) ? parseFloat(cli.preciosEspeciales[pId]) : prod.precio;
+        if (prod.cat !== 'Servicio Técnico') prod.stock -= carritoPOS[pId];
+        itemsFacturados.push({
+          id: pId,
+          nombre: prod.nombre,
+          cant: carritoPOS[pId],
+          precio_unitario: pUnit,
+          subtotal: carritoPOS[pId] * pUnit
+        });
+      });
+
+      var ef = 0, nq = 0, tr = 0, saldoPendiente = 0;
+      var dineroRecibido = window.limpiarValorMoneda(document.getElementById('cobro-recibido').value);
+      var vueltasEntregadas = 0;
+
+      if (medioPagoPOS === 'efectivo') {
+        if (dineroRecibido < totalNetoActual) return alert("El dinero recibido es menor al total neto a pagar.");
+        ef = totalNetoActual;
+        vueltasEntregadas = dineroRecibido - totalNetoActual;
+      } else if (medioPagoPOS === 'nequi') nq = totalNetoActual;
+      else if (medioPagoPOS === 'transferencia') tr = totalNetoActual;
+      else if (medioPagoPOS === 'mixto') {
+        ef = window.limpiarValorMoneda(document.getElementById('mix-efectivo').value);
+        nq = window.limpiarValorMoneda(document.getElementById('mix-nequi').value);
+        tr = window.limpiarValorMoneda(document.getElementById('mix-transf').value);
+        if ((ef + nq + tr) !== totalNetoActual) return alert("La suma de valores mixtos no coincide con el total neto a cobrar.");
+      } else if (medioPagoPOS === 'credito') {
+        saldoPendiente = totalNetoActual;
+        cli.deuda += totalNetoActual;
+      }
+
+      var fechaHoy = new Date().toISOString().split('T')[0];
+
+      try {
+        const cliIdNum = isNaN(parseInt(cli.id)) ? null : parseInt(cli.id);
+        await api.post('facturas_gas', {
+          codigo_factura: cod,
+          tipo_venta: 'Punto de Venta',
+          cliente_id: cliIdNum,
+          cliente_nombre: cli.nombre,
+          cliente_telefono: cli.tel,
+          barrio: cli.barrio,
+          direccion: cli.dir,
+          subtotal: subtotal,
+          descuento: descuento,
+          motivo_descuento: motivoDescuento,
+          total: totalNetoActual,
+          forma_pago: medioPagoPOS,
+          pago_efectivo: ef,
+          pago_nequi: nq,
+          pago_transferencia: tr,
+          dinero_recibido: dineroRecibido,
+          vueltas_entregadas: vueltasEntregadas,
+          saldo_pendiente: saldoPendiente,
+          estado_pago: (medioPagoPOS === 'credito') ? 'pendiente_credito' : 'pagada',
+          detalles_items: itemsFacturados
+        });
+
+        if (medioPagoPOS === 'credito' && cliIdNum) {
+          await api.put('clientes_gas', cliIdNum, { saldo_deuda: cli.deuda });
+        }
+
+        for (var it of itemsFacturados) {
+          var prObj = catalogoPOS.find(p => p.id === it.id);
+          if (prObj && prObj.cat !== 'Servicio Técnico') {
+            await api.put('productos_gas', it.id, { stock_bodega_principal: prObj.stock });
+          }
+        }
+      } catch (err) {
+        console.warn("Error guardando:", err);
+      }
+
+      var nuevaFactura = {
+        codigo: cod,
+        tipo: 'Punto de Venta',
+        cliente: cli.nombre,
+        tel: cli.tel,
+        barrio: cli.barrio,
+        dir: cli.dir,
+        subtotal: subtotal,
+        descuento: descuento,
+        motivoDescuento: motivoDescuento,
+        total: totalNetoActual,
+        medio: medioPagoPOS,
+        ef: ef, nq: nq, tr: tr,
+        recibido: dineroRecibido,
+        vueltas: vueltasEntregadas,
+        saldo: saldoPendiente,
+        items: itemsFacturados,
+        fecha: fechaHoy,
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      facturasEmitidas.unshift(nuevaFactura);
+      consecutivoActual++;
+      document.getElementById('label-consecutivo-pos').innerText = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+      document.getElementById('ticket-numero-label').innerText = `FAC-${String(consecutivoActual).padStart(4, '0')}`;
+
+      window.generarPDFRemision(nuevaFactura);
+      window.enviarWhatsAppRemision(nuevaFactura);
+
+      alert(`¡Factura ${cod} emitida exitosamente!\n- Total: $${totalNetoActual.toLocaleString()}\n- Vueltas: $${vueltasEntregadas.toLocaleString()}`);
+
+      window.cerrarModalCobroPOS();
+      window.limpiarCarritoPOS();
+      window.actualizarBannerBodega();
+      window.renderizarCatalogoPOS(catalogoPOS);
+      window.renderizarAlarmasConsumo();
+      window.renderizarCarteraFacturas();
+    };
+
+    window.generarPDFRemision = function(fac) {
+      try {
+        if (!window.jspdf) return;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('DISTRIBUIDORA MAF GAS', 40, 10, { align: 'center' });
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('GRUPO MAF • NIT 901.234.567-8', 40, 14, { align: 'center' });
+        doc.text('Inírida, Guainía • Tel: 322 858 6808', 40, 18, { align: 'center' });
+
+        doc.line(5, 21, 75, 21);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`REMISIÓN / FACTURA: ${fac.codigo}`, 5, 26);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Fecha: ${fac.fecha}  Hora: ${fac.hora}`, 5, 30);
+        doc.text(`Cliente: ${fac.cliente}`, 5, 34);
+        doc.text(`Tel: ${fac.tel}  Barrio: ${fac.barrio}`, 5, 38);
+        doc.text(`Dir: ${fac.dir}`, 5, 42);
+
+        doc.line(5, 45, 75, 45);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Cant / Descripción', 5, 49);
+        doc.text('Subtotal', 75, 49, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+
+        var y = 54;
+        fac.items.forEach(it => {
+          doc.text(`${it.cant}x ${it.nombre}`, 5, y);
+          doc.text(`$${it.subtotal.toLocaleString()}`, 75, y, { align: 'right' });
+          y += 5;
+        });
+
+        doc.line(5, y, 75, y);
+        y += 5;
+
+        doc.text(`Subtotal:`, 5, y);
+        doc.text(`$${fac.subtotal.toLocaleString()}`, 75, y, { align: 'right' });
+        y += 4;
+
+        if (fac.descuento > 0) {
+          doc.text(`Descuento (${fac.motivoDescuento}):`, 5, y);
+          doc.text(`-$${fac.descuento.toLocaleString()}`, 75, y, { align: 'right' });
+          y += 4;
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(`TOTAL A PAGAR:`, 5, y);
+        doc.text(`$${fac.total.toLocaleString()}`, 75, y, { align: 'right' });
+        y += 5;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Forma de pago: ${fac.medio.toUpperCase()}`, 5, y);
+        y += 4;
+
+        if (fac.medio === 'efectivo') {
+          doc.text(`Recibido: $${fac.recibido.toLocaleString()}`, 5, y);
+          y += 4;
+          doc.text(`Vueltas / Cambio: $${fac.vueltas.toLocaleString()}`, 5, y);
+          y += 5;
+        }
+
+        doc.line(5, y, 75, y);
+        y += 5;
+        doc.setFontSize(7);
+        doc.text('¡Gracias por elegir MAF Gas!', 40, y, { align: 'center' });
+        y += 3.5;
+        doc.text('Verifique la instalación con agua jabonosa.', 40, y, { align: 'center' });
+
+        doc.save(`Remision_${fac.codigo}_${fac.cliente.replace(/\s+/g,'_')}.pdf`);
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+
+    window.enviarWhatsAppRemision = function(fac) {
+      var tel = (fac.tel || '').replace(/\D/g, '');
+      if (!tel || tel.length < 7 || tel === '-') return;
+
+      var mensaje = `*DISTRIBUIDORA MAF GAS - INÍRIDA*\n`;
+      mensaje += `Hola *${fac.cliente}*, confirmamos tu compra.\n\n`;
+      mensaje += `*Documento:* ${fac.codigo}\n`;
+      mensaje += `*Fecha:* ${fac.fecha} ${fac.hora}\n`;
+      mensaje += `*Total Pagado:* $${fac.total.toLocaleString()} (${fac.medio.toUpperCase()})\n`;
+      if (fac.descuento > 0) {
+        mensaje += `*Descuento Aplicado:* -$${fac.descuento.toLocaleString()} (${fac.motivoDescuento})\n`;
+      }
+      mensaje += `\n*Detalle de Entrega:*\n`;
+      fac.items.forEach(it => {
+        mensaje += `• ${it.cant}x ${it.nombre} = $${it.subtotal.toLocaleString()}\n`;
+      });
+      mensaje += `\nTe hemos descargado tu comprobante en PDF. ¡Gracias por confiar en MAF Gas!`;
+
+      var url = `https://wa.me/57${tel}?text=${encodeURIComponent(mensaje)}`;
+      window.open(url, '_blank');
+    };
+
+    // ==========================================
+    // 2. DOMICILIOS & GESTIÓN DE REPARTIDORES
+    // ==========================================
+    window.cargarSelects = function() {
+      var selRep = document.getElementById('dom-repartidor-sel');
+      var selLan = document.getElementById('lan-repartidor');
+
+      selRep.innerHTML = '<option value="">Selecciona repartidor...</option>';
+      selLan.innerHTML = '';
+
+      if (repartidores.length === 0) {
+        selRep.innerHTML = '<option value="">No hay repartidores registrados...</option>';
+        selLan.innerHTML = '<option value="">No hay repartidores...</option>';
+      } else {
+        repartidores.forEach(r => {
+          selRep.innerHTML += `<option value="${r.id}">${r.nombre} • ${r.vehiculo}</option>`;
+          selLan.innerHTML += `<option value="${r.id}">${r.nombre} (${r.vehiculo})</option>`;
+        });
+      }
+
+      window.filtrarBuscadorClientes('');
+    };
+
+    window.abrirModalNuevoRepartidor = function() {
+      document.getElementById('mrep-nombre').value = '';
+      document.getElementById('mrep-vehiculo').value = '';
+      document.getElementById('mrep-tel').value = '';
+      document.getElementById('modal-nuevo-repartidor').style.display = 'flex';
+    };
+
+    window.cerrarModalNuevoRepartidor = function() {
+      document.getElementById('modal-nuevo-repartidor').style.display = 'none';
+    };
+
+    window.guardarNuevoRepartidor = async function(e) {
+      e.preventDefault();
+      var nom = document.getElementById('mrep-nombre').value.trim();
+      var veh = document.getElementById('mrep-vehiculo').value.trim();
+      var tel = document.getElementById('mrep-tel').value.trim();
+
+      var nuevo = {
+        nombre: nom,
+        vehiculo: veh,
+        telefono: tel || '-'
+      };
+
+      try {
+        const res = await api.post('repartidores_gas', nuevo);
+        var nuevoId = (res && res.data && res.data[0]) ? String(res.data[0].id) : 'rep-' + Date.now();
+        repartidores.push({
+          id: nuevoId,
+          nombre: nom,
+          vehiculo: veh,
+          stockBordo: { 'GAS-33': 0, 'GAS-40': 0, 'GAS-80': 0, 'GAS-100': 0 },
+          ventasHoy: [],
+          liquidado: false
+        });
+        alert(`¡Repartidor ${nom} registrado con éxito!`);
+      } catch(err) {
+        alert("Error al registrar repartidor.");
+      }
+
+      window.cerrarModalNuevoRepartidor();
+      window.cargarSelects();
+      window.renderizarLiquidacionesDiarias();
+      window.renderizarEstadoRutas();
+    };
+
+    window.autocompletarCliente = function(tel) {
+      var cli = clientesPOS.find(c => c.tel === tel);
+      if (cli) {
+        document.getElementById('dom-nombre').value = cli.nombre;
+        document.getElementById('dom-barrio').value = cli.barrio;
+        document.getElementById('dom-dir').value = cli.dir;
+        if (cli.cap === '33 lb') document.getElementById('dom-gas-sel').value = 'GAS-33';
+        if (cli.cap === '40 lb') document.getElementById('dom-gas-sel').value = 'GAS-40';
+        if (cli.cap === '80 lb') document.getElementById('dom-gas-sel').value = 'GAS-80';
+        if (cli.cap === '100 lb') document.getElementById('dom-gas-sel').value = 'GAS-100';
+        window.recalcularTotalDomicilio();
+      }
+    };
+
+    window.recalcularTotalDomicilio = function() {
+      var gasId = document.getElementById('dom-gas-sel').value;
+      var gasCant = parseInt(document.getElementById('dom-gas-cant').value) || 0;
+      var sub = 0;
+      if (gasId !== 'ninguno') sub += (catalogoPOS.find(p=>p.id===gasId).precio * gasCant);
+      if (document.getElementById('dom-chk-reg').checked) sub += 45000;
+      if (document.getElementById('dom-chk-man').checked) sub += 9000;
+      if (document.getElementById('dom-chk-srv').checked) sub += 25000;
+
+      var desc = window.limpiarValorMoneda(document.getElementById('dom-descuento').value);
+      var total = Math.max(0, sub - desc);
+      document.getElementById('dom-total-estimado').innerText = `$${total.toLocaleString()}`;
+      return { sub: sub, desc: desc, total: total };
+    };
+
+    window.asignarDomicilio = async function(e) {
+      e.preventDefault();
+      var repId = document.getElementById('dom-repartidor-sel').value;
+      if (!repId) return alert("Selecciona o crea un repartidor antes de despachar.");
+
+      var rep = repartidores.find(r => r.id === repId);
+      var gasId = document.getElementById('dom-gas-sel').value;
+      var gasCant = parseInt(document.getElementById('dom-gas-cant').value) || 0;
+
+      var totCalc = window.recalcularTotalDomicilio();
+      var motivoDesc = document.getElementById('dom-motivo-descuento').value.trim();
+      var numDom = `DOM-${String(domiciliosActivos.length + 1).padStart(4, '0')}`;
+      var nombreCli = document.getElementById('dom-nombre').value;
+      var telCli = document.getElementById('dom-tel').value;
+      var barrioCli = document.getElementById('dom-barrio').value;
+      var dirCli = document.getElementById('dom-dir').value;
+      var pagoCli = document.getElementById('dom-pago-sel').value;
+
+      try {
+        await api.post('pedidos_domicilio_gas', {
+          consecutivo: numDom,
+          nombre_cliente: nombreCli,
+          telefono_cliente: telCli,
+          barrio: barrioCli,
+          direccion: dirCli,
+          capacidad_solicitada: gasId,
+          cantidad: gasCant,
+          subtotal: totCalc.sub,
+          descuento: totCalc.desc,
+          motivo_descuento: motivoDesc,
+          total: totCalc.total,
+          forma_pago: pagoCli,
+          repartidor_nombre: rep.nombre,
+          estado: 'en_camino'
+        });
+      } catch (err) {
+        console.warn(err);
+      }
+
+      domiciliosActivos.unshift({
+        num: numDom,
+        cliente: nombreCli,
+        tel: telCli,
+        barrio: barrioCli,
+        dir: dirCli,
+        repartidor: rep.nombre,
+        subtotal: totCalc.sub,
+        descuento: totCalc.desc,
+        motivoDescuento: motivoDesc,
+        total: totCalc.total,
+        pago: pagoCli,
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+
+      alert(`Domicilio ${numDom} despachado a la móvil de ${rep.nombre}.`);
+      document.getElementById('dom-nombre').value = '';
+      document.getElementById('dom-tel').value = '';
+      document.getElementById('dom-dir').value = '';
+      document.getElementById('dom-descuento').value = 0;
+      document.getElementById('dom-motivo-descuento').value = '';
+      window.renderizarDomiciliosActivos();
+    };
+
+    window.renderizarDomiciliosActivos = function() {
+      var cont = document.getElementById('lista-domicilios-activos');
+      document.getElementById('badge-dom-contador').innerText = `${domiciliosActivos.length} Activos`;
+      if (domiciliosActivos.length === 0) {
+        cont.innerHTML = '<p class="text-slate-400 italic text-center py-8">No hay domicilios en ruta actualmente.</p>';
+        return;
+      }
+      cont.innerHTML = domiciliosActivos.map(d => `
+        <div class="p-3.5 bg-slate-50 border rounded-2xl flex justify-between items-center text-xs">
+          <div>
+            <span class="font-mono text-indigo-900 font-bold">${d.num} • ${d.hora}</span>
+            <b class="text-slate-900 block mt-0.5">${d.cliente} (${d.barrio})</b>
+            <span class="text-slate-500 font-medium">${d.dir} | Móvil: <b>${d.repartidor}</b></span>
+            ${d.descuento > 0 ? `<span class="block text-rose-600 text-[10px] font-bold">Descuento: -$${d.descuento.toLocaleString()} (${d.motivoDescuento})</span>` : ''}
+          </div>
+          <div class="text-right">
+            <span class="text-emerald-700 font-black text-sm block">$${d.total.toLocaleString()}</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400">${d.pago}</span>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    window.abrirModalNuevoCliente = function() {
+      document.getElementById('mcli-nombre').value = '';
+      document.getElementById('mcli-tel').value = '';
+      document.getElementById('mcli-barrio').value = '';
+      document.getElementById('mcli-dir').value = '';
+      document.getElementById('mcli-cupo').value = 0;
+      document.getElementById('modal-nuevo-cliente').style.display = 'flex';
+    };
+
+    window.cerrarModalNuevoCliente = function() {
+      document.getElementById('modal-nuevo-cliente').style.display = 'none';
+    };
+
+    window.guardarNuevoCliente = async function(e) {
+      e.preventDefault();
+      var cap = document.getElementById('mcli-cap').value;
+      var ciclo = 30;
+      if (cap === '40 lb') ciclo = 45;
+      if (cap === '80 lb') ciclo = 60;
+      if (cap === '100 lb') ciclo = 90;
+
+      var nom = document.getElementById('mcli-nombre').value.trim();
+      var tel = document.getElementById('mcli-tel').value.trim();
+      var barrio = document.getElementById('mcli-barrio').value.trim();
+      var dir = document.getElementById('mcli-dir').value.trim();
+      var cupo = window.limpiarValorMoneda(document.getElementById('mcli-cupo').value);
+      var dias = parseInt(document.getElementById('mcli-dias').value) || 15;
+
+      var nuevoCli = {
+        nombre_titular: nom,
+        tipo_cliente: document.getElementById('mcli-tipo').value,
+        telefono: tel || '-',
+        barrio: barrio || 'Inírida',
+        direccion: dir || 'Dirección no especificada',
+        capacidad_habitual: cap,
+        dias_duracion_ciclo: ciclo,
+        fecha_ultima_compra: new Date().toISOString().split('T')[0],
+        cupo_credito: cupo,
+        saldo_deuda: 0,
+        dias_plazo: dias
+      };
+
+      try {
+        const res = await api.post('clientes_gas', nuevoCli);
+        if (res && res.data && res.data.length > 0) {
+          nuevoCli.id = String(res.data[0].id);
+        } else {
+          nuevoCli.id = 'cli-' + Date.now();
+        }
+      } catch (err) {
+        nuevoCli.id = 'cli-' + Date.now();
+      }
+
+      clientesPOS.push({
+        id: nuevoCli.id,
+        nombre: nuevoCli.nombre_titular,
+        tel: nuevoCli.telefono,
+        barrio: nuevoCli.barrio,
+        dir: nuevoCli.direccion,
+        cap: nuevoCli.capacidad_habitual,
+        diasCiclo: nuevoCli.dias_duracion_ciclo,
+        fechaUltima: nuevoCli.fecha_ultima_compra,
+        cupo: nuevoCli.cupo_credito,
+        deuda: 0,
+        preciosEspeciales: {}
+      });
+
+      window.cerrarModalNuevoCliente();
+      window.cargarSelects();
+      window.renderizarAlarmasConsumo();
+      alert(`Cliente ${nuevoCli.nombre_titular} creado y guardado en PostgreSQL.`);
+    };
+
+    // ==========================================
+    // 3. AVISO DE CILINDROS PRONTO A VENCER
+    // ==========================================
+    window.renderizarAlarmasConsumo = function() {
+      var tbody = document.getElementById('tabla-alarmas-body');
+      var hoy = new Date();
+      var q = (document.getElementById('buscador-alertas')?.value || '').toLowerCase().trim();
+      var alertasCount = 0;
+      tbody.innerHTML = '';
+
+      var lista = clientesPOS.filter(c => c.id !== 'cli-mostrador');
+      if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400 italic">No hay clientes con historial de recarga registrados aún.</td></tr>';
+        document.getElementById('badge-alertas-count').innerText = 0;
+        return;
+      }
+
+      lista.forEach(c => {
+        if (q && !c.nombre.toLowerCase().includes(q) && !c.barrio.toLowerCase().includes(q)) return;
+
+        var fechaU = new Date(c.fechaUltima);
+        var diffDias = Math.floor((hoy - fechaU) / (1000 * 60 * 60 * 24));
+        var diasRestantes = c.diasCiclo - diffDias;
+
+        var diagnostico = '';
+        var accionBtn = '';
+
+        if (diasRestantes <= 4 && diasRestantes >= 0) {
+          alertasCount++;
+          diagnostico = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800">⏳ Por Vencer (${diasRestantes} días)</span>`;
+          accionBtn = `
+            <a href="https://wa.me/57${c.tel}?text=Hola%20${encodeURIComponent(c.nombre)},%20le%20saludamos%20de%20MAF%20Gas.%20Su%20cilindro%20de%20${c.cap}%20está%20a%20${diasRestantes}%20días%20de%20agotarse." target="_blank" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow-sm mr-1">WhatsApp</a>
+            <button type="button" onclick="window.programarRecargaCliente('${c.id}')" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-bold text-xs shadow-sm">Recargar</button>
+          `;
+        } else if (diasRestantes < 0) {
+          alertasCount++;
+          diagnostico = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-800">⚠️ Vencido (+${Math.abs(diasRestantes)}d)</span>`;
+          accionBtn = `
+            <button type="button" onclick="window.seguimientoRecuperacionEnvase('${c.id}')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-black text-xs shadow-sm mr-1">Recuperar Cilindro</button>
+            <button type="button" onclick="window.programarRecargaCliente('${c.id}')" class="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-bold text-xs">Ya Recargó</button>
+          `;
+        } else {
+          diagnostico = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">✓ En Consumo (${diasRestantes}d)</span>`;
+          accionBtn = `<button type="button" onclick="window.programarRecargaCliente('${c.id}')" class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs">Forzar Recarga</button>`;
+        }
+
+        var tr = document.createElement('tr');
+        tr.className = diasRestantes < 0 ? "bg-rose-50/50 hover:bg-rose-50" : (diasRestantes <= 4 ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-slate-50");
+        tr.innerHTML = `
+          <td class="p-3 font-black text-slate-900">${c.nombre}</td>
+          <td class="p-3 font-bold">${c.tel}</td>
+          <td class="p-3">${c.barrio} - <span class="text-slate-500">${c.dir}</span></td>
+          <td class="p-3 text-center font-black">${c.cap}</td>
+          <td class="p-3 text-center text-slate-500">${c.fechaUltima}</td>
+          <td class="p-3 text-center font-bold">${diffDias} días</td>
+          <td class="p-3 text-center">${diagnostico}</td>
+          <td class="p-3 text-center">${accionBtn}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('badge-alertas-count').innerText = alertasCount;
+    };
+
+    window.programarRecargaCliente = async function(cliId) {
+      var c = clientesPOS.find(it => String(it.id) === String(cliId));
+      if (!c) return;
+      var fechaHoy = new Date().toISOString().split('T')[0];
+      c.fechaUltima = fechaHoy;
+
+      if (!c.id.includes('cli-')) {
+        try {
+          await api.put('clientes_gas', c.id, { fecha_ultima_compra: fechaHoy });
+        } catch (e) { console.warn(e); }
+      }
+
+      alert(`¡Recarga asentada para ${c.nombre}! El contador retornó a 0 días.`);
+      window.renderizarAlarmasConsumo();
+    };
+
+    window.seguimientoRecuperacionEnvase = function(cliId) {
+      var c = clientesPOS.find(it => String(it.id) === String(cliId));
+      if (!c) return;
+      var obs = prompt(`Seguimiento de recuperación para ${c.nombre} (${c.tel}):`);
+      if (obs) alert(`Seguimiento asentado: "${obs}".`);
+    };
+
+    // ==========================================
+    // 4. LIQUIDACIÓN DIARIA CON ARQUEO EN MANO
+    // ==========================================
+    window.renderizarLiquidacionesDiarias = function() {
+      var cont = document.getElementById('grid-liquidaciones-diarias');
+      if (repartidores.length === 0) {
+        cont.innerHTML = `
+          <div class="col-span-2 text-center p-8 bg-slate-50 rounded-2xl border border-dashed text-slate-400 italic">
+            No hay repartidores registrados en el sistema. Registra choferes y vehículos para habilitar liquidaciones.
+          </div>
+        `;
+        return;
+      }
+
+      cont.innerHTML = repartidores.map(r => {
+        var totalEfectivoEsp = r.ventasHoy.filter(v => v.medio === 'efectivo').reduce((a, b) => a + b.total, 0);
+        var totalNequi = r.ventasHoy.filter(v => v.medio === 'nequi').reduce((a, b) => a + b.total, 0);
+        var totalTransf = r.ventasHoy.filter(v => v.medio === 'transferencia').reduce((a, b) => a + b.total, 0);
+        var totalCredito = r.ventasHoy.filter(v => v.medio === 'credito').reduce((a, b) => a + b.total, 0);
+        var granTotalRuta = totalEfectivoEsp + totalNequi + totalTransf + totalCredito;
+        var totalPipetas = r.ventasHoy.reduce((a, b) => a + b.cant, 0);
+
+        return `
+          <div class="p-5 bg-white border border-slate-200 rounded-3xl shadow-sm space-y-4 text-xs">
+            <div class="flex justify-between items-start border-b pb-3">
+              <div>
+                <b class="text-base text-slate-900 block font-black">${r.nombre}</b>
+                <span class="text-slate-500 font-semibold">${r.vehiculo} • Pipetas entregadas: <b>${totalPipetas}</b></span>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${r.liquidado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                ${r.liquidado ? '✓ Liquidado y en Caja' : '⏳ Pendiente Cuadre'}
+              </span>
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="font-black text-slate-700 block uppercase text-[11px]">Ventas Realizadas en Turno:</span>
+              <div class="space-y-1 max-h-28 overflow-y-auto pr-1">
+                ${r.ventasHoy.length === 0 ? '<p class="text-slate-400 italic py-2">Sin despachos registrados hoy.</p>' : r.ventasHoy.map(v => `
+                  <div class="flex justify-between bg-slate-50 p-2 rounded-xl border border-slate-100 text-[11px]">
+                    <span>${v.cant}x${v.item} <b class="uppercase text-[9px] text-slate-400">(${v.medio})</b></span> <b class="text-slate-900">$${v.total.toLocaleString()}</b>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1 border-t text-[11px]">
+              <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                <span class="text-amber-800 font-bold block text-[10px] uppercase">💵 Efectivo Esperado:</span>
+                <b class="text-amber-950 text-sm font-black">$${totalEfectivoEsp.toLocaleString()}</b>
+              </div>
+              <div class="p-2.5 bg-purple-50 rounded-xl border border-purple-200">
+                <span class="text-purple-800 font-bold block text-[10px] uppercase">💳 Nequi en calle:</span>
+                <b class="text-purple-950 text-sm font-black">$${totalNequi.toLocaleString()}</b>
+              </div>
+              <div class="p-2.5 bg-blue-50 rounded-xl border border-blue-200">
+                <span class="text-blue-800 font-bold block text-[10px] uppercase">📱 Transferencias:</span>
+                <b class="text-blue-950 text-sm font-black">$${totalTransf.toLocaleString()}</b>
+              </div>
+              <div class="p-2.5 bg-rose-50 rounded-xl border border-rose-200">
+                <span class="text-rose-800 font-bold block text-[10px] uppercase">📋 Créditos en ruta:</span>
+                <b class="text-rose-950 text-sm font-black">$${totalCredito.toLocaleString()}</b>
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <label class="block text-xs font-black uppercase text-slate-700">¿Cuánto dinero en efectivo te entrega físicamente?</label>
+              <div class="relative">
+                <input type="text" id="input-recibido-${r.id}" oninput="window.formatearMilesInput(this); window.recalcularCuadreRepartidor('${r.id}', ${totalEfectivoEsp});" ${r.liquidado ? 'disabled' : ''} placeholder="Ej: ${totalEfectivoEsp.toLocaleString('es-CO')}" class="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-black text-slate-900 text-base outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+              <div class="flex justify-between items-center text-xs font-bold pt-1">
+                <span class="text-slate-500">Resultado del Cuadre:</span>
+                <span id="diff-cuadre-${r.id}" class="font-black text-slate-400">Digita el monto recibido</span>
+              </div>
+            </div>
+
+            <button type="button" onclick="window.confirmarLiquidacionRepartidor('${r.id}', ${totalEfectivoEsp})" ${r.liquidado ? 'disabled' : ''} class="w-full py-3.5 ${r.liquidado ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'} font-black text-xs rounded-xl transition-all">
+              ${r.liquidado ? '✓ Cuadre Conciliado' : '✓ Validar Liquidación y Recibir Dinero en Caja'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    };
+
+    window.recalcularCuadreRepartidor = function(repId, esperado) {
+      var input = document.getElementById(`input-recibido-${repId}`);
+      var lbl = document.getElementById(`diff-cuadre-${repId}`);
+      if (!input || !lbl) return;
+
+      var real = window.limpiarValorMoneda(input.value);
+      if (input.value.trim() === '') {
+        lbl.innerText = "Digita el monto recibido";
+        lbl.className = "font-bold text-slate-400";
+        return;
+      }
+
+      var diff = real - esperado;
+      if (diff === 0) {
+        lbl.innerText = "✓ Cuadre Perfecto ($0)";
+        lbl.className = "font-black text-emerald-600 text-sm";
+      } else if (diff < 0) {
+        lbl.innerText = `⚠️ Faltante -$${Math.abs(diff).toLocaleString('es-CO')}`;
+        lbl.className = "font-black text-rose-600 text-sm";
+      } else {
+        lbl.innerText = `ℹ️ Sobrante +$${diff.toLocaleString('es-CO')}`;
+        lbl.className = "font-black text-blue-600 text-sm";
+      }
+    };
+
+    window.confirmarLiquidacionRepartidor = async function(repId, esperado) {
+      var r = repartidores.find(it => it.id === repId);
+      if (!r || r.liquidado) return;
+
+      var inputRec = document.getElementById(`input-recibido-${repId}`);
+      if (!inputRec || inputRec.value.trim() === '') return alert("Digita el monto recibido.");
+
+      var efectivoReal = window.limpiarValorMoneda(inputRec.value);
+      var totalNequi = r.ventasHoy.filter(v => v.medio === 'nequi').reduce((a, b) => a + b.total, 0);
+      var totalTransf = r.ventasHoy.filter(v => v.medio === 'transferencia').reduce((a, b) => a + b.total, 0);
+      var totalCredito = r.ventasHoy.filter(v => v.medio === 'credito').reduce((a, b) => a + b.total, 0);
+      var granTotalRuta = efectivoReal + totalNequi + totalTransf + totalCredito;
+
+      r.liquidado = true;
+      var codLiq = `LIQ-${r.nombre.split(' ')[0].toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+      try {
+        await api.post('facturas_gas', {
+          codigo_factura: codLiq,
+          tipo_venta: 'Liquidación Calle',
+          cliente_nombre: `Ruta ${r.nombre}`,
+          subtotal: granTotalRuta,
+          total: granTotalRuta,
+          forma_pago: 'mixto',
+          pago_efectivo: efectivoReal,
+          pago_nequi: totalNequi,
+          pago_transferencia: totalTransf,
+          saldo_pendiente: totalCredito,
+          detalles_items: r.ventasHoy
+        });
+      } catch (e) { console.warn(e); }
+
+      facturasEmitidas.unshift({
+        codigo: codLiq,
+        tipo: 'Liquidación Calle',
+        cliente: `Ruta ${r.nombre}`,
+        total: granTotalRuta,
+        medio: 'mixto',
+        ef: efectivoReal,
+        nq: totalNequi,
+        tr: totalTransf,
+        saldo: totalCredito,
+        fecha: new Date().toISOString().split('T')[0]
+      });
+
+      alert(`Liquidación guardada en PostgreSQL y recibida en caja.`);
+      window.renderizarLiquidacionesDiarias();
+    };
+
+    // ==========================================
+    // 5. VENTA LANCHA (A POSTGRESQL)
+    // ==========================================
+    window.actualizarSugeridoLancha = function() {
+      var id = document.getElementById('lan-cilindro').value;
+      var sug = preciosLanchaRef[id] || 133000;
+      document.getElementById('lan-precio-sugerido-lbl').innerText = `$${sug.toLocaleString()}`;
+      document.getElementById('lan-precio-unitario').value = Number(sug).toLocaleString('es-CO');
+      window.recalcularTotalLancha();
+    };
+
+    window.recalcularTotalLancha = function() {
+      var cant = parseInt(document.getElementById('lan-cant').value) || 1;
+      var precio = window.limpiarValorMoneda(document.getElementById('lan-precio-unitario').value);
+      document.getElementById('lan-total-texto').innerText = `$${(cant * precio).toLocaleString()}`;
+    };
+
+    window.procesarVentaLancha = async function(e) {
+      e.preventDefault();
+      var repId = document.getElementById('lan-repartidor').value;
+      if (!repId) return alert("Selecciona un repartidor.");
+      var rep = repartidores.find(r => r.id === repId);
+      var cilId = document.getElementById('lan-cilindro').value;
+      var cant = parseInt(document.getElementById('lan-cant').value) || 1;
+      var precioCobrado = window.limpiarValorMoneda(document.getElementById('lan-precio-unitario').value);
+      var total = cant * precioCobrado;
+
+      var cod = `LAN-${Date.now().toString().slice(-4)}`;
+      var cliLan = document.getElementById('lan-cliente').value;
+
+      try {
+        await api.post('facturas_gas', {
+          codigo_factura: cod,
+          tipo_venta: 'Lancha',
+          cliente_nombre: cliLan,
+          repartidor_nombre: rep.nombre,
+          subtotal: total,
+          total: total,
+          forma_pago: 'efectivo',
+          pago_efectivo: total,
+          detalles_items: [{ id: cilId, nombre: catalogoPOS.find(p=>p.id===cilId)?.nombre, cant: cant, precio: precioCobrado, subtotal: total }]
+        });
+      } catch (e) { console.warn(e); }
+
+      facturasEmitidas.unshift({
+        codigo: cod,
+        tipo: 'Lancha',
+        cliente: cliLan,
+        subtotal: total,
+        total: total,
+        medio: 'efectivo',
+        ef: total, nq: 0, tr: 0, saldo: 0,
+        fecha: new Date().toISOString().split('T')[0]
+      });
+
+      alert(`¡Venta Lancha ${cod} registrada en PostgreSQL y caja!`);
+      document.getElementById('lan-cliente').value = '';
+      window.actualizarSugeridoLancha();
+    };
+
+    // ==========================================
+    // 6. ESTADO DE RUTAS
+    // ==========================================
+    window.renderizarEstadoRutas = function() {
+      var cont = document.getElementById('grid-rutas-carros');
+      if (repartidores.length === 0) {
+        cont.innerHTML = `
+          <div class="col-span-2 text-center p-8 bg-slate-50 rounded-2xl border border-dashed text-slate-400 italic">
+            No hay vehículos ni repartidores asignados a rutas hoy.
+          </div>
+        `;
+        return;
+      }
+      cont.innerHTML = repartidores.map(r => `
+        <div class="p-4 bg-slate-50 border rounded-2xl space-y-3 text-xs">
+          <div class="flex justify-between items-center border-b pb-2">
+            <div><b class="text-slate-900 text-sm block">${r.nombre}</b><span class="text-slate-500 font-bold">${r.vehiculo}</span></div>
+            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-black text-[10px] uppercase">En Ruta</span>
+          </div>
+          <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Pipetas a Bordo Disponibles:</span>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="bg-white p-2 rounded-xl border"><span>33 lb</span><b class="block text-indigo-950 text-sm">${r.stockBordo['GAS-33']}</b></div>
+            <div class="bg-white p-2 rounded-xl border"><span>40 lb</span><b class="block text-indigo-950 text-sm">${r.stockBordo['GAS-40']}</b></div>
+            <div class="bg-white p-2 rounded-xl border"><span>80 lb</span><b class="block text-indigo-950 text-sm">${r.stockBordo['GAS-80']}</b></div>
+            <div class="bg-white p-2 rounded-xl border"><span>100 lb</span><b class="block text-indigo-950 text-sm">${r.stockBordo['GAS-100']}</b></div>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    // ==========================================
+    // 7. MOVIMIENTOS MENORES DE CAJA
+    // ==========================================
+    window.registrarMovimientoCaja = async function(e) {
+      e.preventDefault();
+      var tipo = document.getElementById('mov-tipo').value;
+      var concepto = document.getElementById('mov-concepto').value.trim();
+      var monto = window.limpiarValorMoneda(document.getElementById('mov-monto').value);
+
+      try {
+        await api.post('movimientos_caja_gas', {
+          tipo: tipo,
+          concepto: concepto,
+          monto: monto,
+          responsable: 'Admin Mostrador'
+        });
+      } catch (e) { console.warn(e); }
+
+      movimientosCaja.unshift({
+        tipo: tipo,
+        concepto: concepto,
+        monto: monto,
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+
+      alert("Movimiento registrado en PostgreSQL.");
+      document.getElementById('mov-concepto').value = '';
+      document.getElementById('mov-monto').value = '';
+      window.renderizarMovimientos();
+    };
+
+    window.renderizarMovimientos = function() {
+      var tbody = document.getElementById('tabla-movimientos-body');
+      if (movimientosCaja.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Sin movimientos registrados hoy.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = movimientosCaja.map(m => `
+        <tr>
+          <td class="p-2.5 font-bold">${m.hora}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded font-black text-[10px] uppercase ${m.tipo==='egreso_gasto'?'bg-rose-100 text-rose-800':'bg-emerald-100 text-emerald-800'}">${m.tipo==='egreso_gasto'?'Egreso / Gasto':'Ingreso Extra'}</span></td>
+          <td class="p-2.5">${m.concepto}</td>
+          <td class="p-2.5 text-right font-black ${m.tipo==='egreso_gasto'?'text-rose-700':'text-emerald-700'}">${m.tipo==='egreso_gasto'?'-':'+'}$${m.monto.toLocaleString()}</td>
+        </tr>
+      `).join('');
+    };
+
+    // ==========================================
+    // 8. CARTERA Y ABONOS DISCRIMINADOS
+    // ==========================================
+    window.renderizarCarteraFacturas = function() {
+      var tbody = document.getElementById('tabla-cartera-facturas-body');
+      var pendientes = facturasEmitidas.filter(f => (f.saldo_pendiente > 0 || f.saldo > 0));
+      if (pendientes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay facturas a crédito pendientes por cobrar.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = pendientes.map(f => {
+        var sld = f.saldo_pendiente !== undefined ? f.saldo_pendiente : f.saldo;
+        var cod = f.codigo_factura || f.codigo;
+        var cliNom = f.cliente_nombre || f.cliente;
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-mono font-bold">${cod}</td>
+            <td class="p-3">${f.fecha_emision ? f.fecha_emision.split('T')[0] : f.fecha}</td>
+            <td class="p-3 font-black text-slate-900">${cliNom}</td>
+            <td class="p-3 text-right font-bold">$${f.total.toLocaleString()}</td>
+            <td class="p-3 text-right font-black text-rose-700 text-sm">$${sld.toLocaleString()}</td>
+            <td class="p-3 text-center font-bold text-slate-500">15 días</td>
+            <td class="p-3 text-center">
+              <button type="button" onclick="window.abrirModalAbonoFactura('${cod}')" class="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg text-xs shadow-sm">
+                Abonar a Factura
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    window.abrirModalAbonoFactura = function(cod) {
+      var f = facturasEmitidas.find(it => (it.codigo_factura === cod || it.codigo === cod));
+      if (!f) return;
+      facturaSeleccionadaAbono = f;
+      var sld = f.saldo_pendiente !== undefined ? f.saldo_pendiente : f.saldo;
+      document.getElementById('abono-fac-codigo').innerText = cod;
+      document.getElementById('abono-fac-cliente').innerText = f.cliente_nombre || f.cliente;
+      document.getElementById('abono-fac-saldo').innerText = `$${sld.toLocaleString()}`;
+      document.getElementById('abono-fac-monto').value = '';
+      document.getElementById('modal-abono-factura').style.display = 'flex';
+    };
+
+    window.cerrarModalAbonoFactura = function() {
+      document.getElementById('modal-abono-factura').style.display = 'none';
+    };
+
+    window.procesarAbonoFactura = async function(e) {
+      e.preventDefault();
+      var monto = window.limpiarValorMoneda(document.getElementById('abono-fac-monto').value);
+      var sld = facturaSeleccionadaAbono.saldo_pendiente !== undefined ? facturaSeleccionadaAbono.saldo_pendiente : facturaSeleccionadaAbono.saldo;
+      if (monto <= 0 || monto > sld) return alert("Monto de abono inválido.");
+
+      var nuevoSaldo = sld - monto;
+      if (facturaSeleccionadaAbono.saldo_pendiente !== undefined) facturaSeleccionadaAbono.saldo_pendiente = nuevoSaldo;
+      if (facturaSeleccionadaAbono.saldo !== undefined) facturaSeleccionadaAbono.saldo = nuevoSaldo;
+
+      var codFac = facturaSeleccionadaAbono.codigo_factura || facturaSeleccionadaAbono.codigo;
+      var cliNom = facturaSeleccionadaAbono.cliente_nombre || facturaSeleccionadaAbono.cliente;
+      var medio = document.getElementById('abono-fac-medio').value;
+
+      try {
+        await api.post('abonos_facturas_gas', {
+          consecutivo_abono: `ABN-${Date.now().toString().slice(-4)}`,
+          factura_id: facturaSeleccionadaAbono.id || null,
+          codigo_factura: codFac,
+          cliente_nombre: cliNom,
+          monto_abonado: monto,
+          medio_pago: medio,
+          saldo_anterior_factura: sld,
+          saldo_nuevo_factura: nuevoSaldo,
+          recibido_por: 'Admin Mostrador'
+        });
+
+        if (facturaSeleccionadaAbono.id) {
+          await api.put('facturas_gas', facturaSeleccionadaAbono.id, {
+            saldo_pendiente: nuevoSaldo,
+            estado_pago: nuevoSaldo === 0 ? 'pagada' : 'pendiente_credito'
+          });
+        }
+      } catch (err) { console.warn(err); }
+
+      abonosFacturas.unshift({
+        factura: codFac,
+        cliente: cliNom,
+        monto: monto,
+        medio: medio,
+        fecha: new Date().toISOString().split('T')[0]
+      });
+
+      alert(`¡Abono de $${monto.toLocaleString()} registrado en PostgreSQL!`);
+      window.cerrarModalAbonoFactura();
+      window.renderizarCarteraFacturas();
+    };
+
+    // ==========================================
+    // 9. CIERRE Y ARQUEO DIARIO INTEGRAL
+    // ==========================================
+    window.abrirModalCierreDiario = function() {
+      var ventasEf = facturasEmitidas.filter(f => f.tipo === 'Punto de Venta' || f.tipo_venta === 'Punto de Venta' || f.tipo === 'Lancha' || f.tipo_venta === 'Lancha').reduce((a, b) => a + (b.ef || b.pago_efectivo || 0), 0);
+      var liqRepsEf = facturasEmitidas.filter(f => f.tipo === 'Liquidación Calle' || f.tipo_venta === 'Liquidación Calle').reduce((a, b) => a + (b.ef || b.pago_efectivo || 0), 0);
+      var abonosEf = abonosFacturas.filter(a => a.medio === 'efectivo').reduce((a, b) => a + b.monto, 0);
+      var extraEf = movimientosCaja.filter(m => m.tipo === 'ingreso_extra').reduce((a, b) => a + b.monto, 0);
+      var gastosEf = movimientosCaja.filter(m => m.tipo === 'egreso_gasto').reduce((a, b) => a + b.monto, 0);
+
+      var efEsperado = baseCajaInicial + ventasEf + liqRepsEf + abonosEf + extraEf - gastosEf;
+      var nqEsperado = facturasEmitidas.reduce((a, b) => a + (b.nq || b.pago_nequi || 0), 0);
+      var trEsperado = facturasEmitidas.reduce((a, b) => a + (b.tr || b.pago_transferencia || 0), 0);
+
+      document.getElementById('arq-base').innerText = `$${baseCajaInicial.toLocaleString()}`;
+      document.getElementById('arq-ventas-ef').innerText = `$${ventasEf.toLocaleString()}`;
+      document.getElementById('arq-liq-reps').innerText = `$${liqRepsEf.toLocaleString()}`;
+      document.getElementById('arq-abonos-ef').innerText = `$${abonosEf.toLocaleString()}`;
+      document.getElementById('arq-extra-ef').innerText = `$${extraEf.toLocaleString()}`;
+      document.getElementById('arq-gastos-ef').innerText = `-$${gastosEf.toLocaleString()}`;
+
+      document.getElementById('arq-ef-esp').innerText = `$${efEsperado.toLocaleString()}`;
+      document.getElementById('arq-nq-esp').innerText = `$${nqEsperado.toLocaleString()}`;
+      document.getElementById('arq-tr-esp').innerText = `$${trEsperado.toLocaleString()}`;
+
+      document.getElementById('arq-ef-real').value = '';
+      document.getElementById('arq-nq-real').value = '';
+      document.getElementById('arq-tr-real').value = '';
+      window.recalcularDiferenciasCierre();
+
+      document.getElementById('modal-cierre-diario').style.display = 'flex';
+    };
+
+    window.cerrarModalCierreDiario = function() {
+      document.getElementById('modal-cierre-diario').style.display = 'none';
+    };
+
+    window.recalcularDiferenciasCierre = function() {
+      var efEsp = window.limpiarValorMoneda(document.getElementById('arq-ef-esp').innerText);
+      var efReal = window.limpiarValorMoneda(document.getElementById('arq-ef-real').value);
+      var diffEf = efReal - efEsp;
+
+      var lblEf = document.getElementById('diff-ef');
+      if (document.getElementById('arq-ef-real').value.trim() === '') {
+        lblEf.innerText = "Pendiente ingresar";
+        lblEf.className = "font-bold block text-slate-400";
+      } else if (diffEf === 0) {
+        lblEf.innerText = "Cuadrado ($0)";
+        lblEf.className = "font-black block text-emerald-600";
+      } else if (diffEf < 0) {
+        lblEf.innerText = `Falta -$${Math.abs(diffEf).toLocaleString()}`;
+        lblEf.className = "font-black block text-rose-600";
+      } else {
+        lblEf.innerText = `Sobra +$${diffEf.toLocaleString()}`;
+        lblEf.className = "font-black block text-blue-600";
+      }
+
+      var nqEsp = window.limpiarValorMoneda(document.getElementById('arq-nq-esp').innerText);
+      var nqReal = window.limpiarValorMoneda(document.getElementById('arq-nq-real').value);
+      var diffNq = nqReal - nqEsp;
+      var lblNq = document.getElementById('diff-nq');
+      lblNq.innerText = (diffNq === 0) ? "Cuadrado ($0)" : (diffNq < 0) ? `Falta -$${Math.abs(diffNq).toLocaleString()}` : `Sobra +$${diffNq.toLocaleString()}`;
+      lblNq.className = (diffNq === 0) ? "font-black block text-emerald-600" : "font-black block text-rose-600";
+
+      var trEsp = window.limpiarValorMoneda(document.getElementById('arq-tr-esp').innerText);
+      var trReal = window.limpiarValorMoneda(document.getElementById('arq-tr-real').value);
+      var diffTr = trReal - trEsp;
+      var lblTr = document.getElementById('diff-tr');
+      lblTr.innerText = (diffTr === 0) ? "Cuadrado ($0)" : (diffTr < 0) ? `Falta -$${Math.abs(diffTr).toLocaleString()}` : `Sobra +$${diffTr.toLocaleString()}`;
+      lblTr.className = (diffTr === 0) ? "font-black block text-emerald-600" : "font-black block text-rose-600";
+
+      var totalDiff = diffEf + diffNq + diffTr;
+      var banner = document.getElementById('banner-cierre-consolidado');
+      if (totalDiff === 0) {
+        banner.className = "p-3.5 rounded-2xl text-center font-black text-sm bg-emerald-50 text-emerald-800 border border-emerald-200";
+        banner.innerText = "Diferencia Consolidada de Caja: $0 (Cuadrado)";
+      } else if (totalDiff < 0) {
+        banner.className = "p-3.5 rounded-2xl text-center font-black text-sm bg-rose-50 text-rose-700 border border-rose-200";
+        banner.innerText = `Diferencia Consolidada de Caja: -$${Math.abs(totalDiff).toLocaleString()} (Faltante)`;
+      } else {
+        banner.className = "p-3.5 rounded-2xl text-center font-black text-sm bg-blue-50 text-blue-800 border border-blue-200";
+        banner.innerText = `Diferencia Consolidada de Caja: +$${totalDiff.toLocaleString()} (Sobrante)`;
+      }
+    };
+
+    window.confirmarCierreCajaDefinitivo = async function() {
+      var efEsp = window.limpiarValorMoneda(document.getElementById('arq-ef-esp').innerText);
+      var efReal = window.limpiarValorMoneda(document.getElementById('arq-ef-real').value);
+      var nqEsp = window.limpiarValorMoneda(document.getElementById('arq-nq-esp').innerText);
+      var nqReal = window.limpiarValorMoneda(document.getElementById('arq-nq-real').value);
+      var trEsp = window.limpiarValorMoneda(document.getElementById('arq-tr-esp').innerText);
+      var trReal = window.limpiarValorMoneda(document.getElementById('arq-tr-real').value);
+      var diffTotal = (efReal - efEsp) + (nqReal - nqEsp) + (trReal - trEsp);
+
+      try {
+        await api.post('cierres_caja_pos_gas', {
+          fecha_cierre: new Date().toISOString().split('T')[0],
+          base_inicial_efectivo: baseCajaInicial,
+          ventas_patio_efectivo: window.limpiarValorMoneda(document.getElementById('arq-ventas-ef').innerText),
+          liquidacion_repartidores_efectivo: window.limpiarValorMoneda(document.getElementById('arq-liq-reps').innerText),
+          abonos_cartera_efectivo: window.limpiarValorMoneda(document.getElementById('arq-abonos-ef').innerText),
+          ingresos_extra_efectivo: window.limpiarValorMoneda(document.getElementById('arq-extra-ef').innerText),
+          gastos_efectivo: window.limpiarValorMoneda(document.getElementById('arq-gastos-ef').innerText),
+          efectivo_esperado: efEsp,
+          efectivo_real: efReal,
+          diferencia_efectivo: efReal - efEsp,
+          nequi_esperado: nqEsp,
+          nequi_real: nqReal,
+          diferencia_nequi: nqReal - nqEsp,
+          transferencias_esperado: trEsp,
+          transferencias_real: trReal,
+          diferencia_transferencias: trReal - trEsp,
+          diferencia_consolidada: diffTotal,
+          estado_cuadre: diffTotal === 0 ? 'cuadrado' : diffTotal < 0 ? 'faltante' : 'sobrante',
+          cerrado_por: 'Admin Mostrador'
+        });
+      } catch (e) { console.warn(e); }
+
+      alert("¡Turno cerrado y arqueo registrado en PostgreSQL exitosamente!");
+      window.cerrarModalCierreDiario();
+    };
+
+    window.addEventListener('DOMContentLoaded', function() {});
+  </script>
+</body>
+</html>

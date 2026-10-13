@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>App Repartidor - MAF Gas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-800 font-sans antialiased min-h-screen flex justify-center items-center md:p-4">
+
+  <!-- PANTALLA BLOQUEO POR PIN -->
+  <div id="pantalla-pin-rep-gas" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-6 text-center space-y-6 shadow-2xl">
+      <div>
+        <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">GRUPO MAF</span>
+        <h2 class="text-xl font-black text-white mt-1">REPARTIDOR DE GAS</h2>
+        <p class="text-xs text-slate-400">Ingresa tu PIN de ruta registrado para sincronizar tu turno</p>
+      </div>
+
+      <div class="space-y-4">
+        <input type="password" id="input-pin-gas" readonly maxlength="4" placeholder="••••" class="w-full bg-slate-950 border border-slate-700 rounded-2xl py-3 text-center text-3xl font-black text-emerald-400 tracking-[0.5em] outline-none">
+        
+        <div class="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
+          <button type="button" onclick="window.teclearPin('1')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">1</button>
+          <button type="button" onclick="window.teclearPin('2')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">2</button>
+          <button type="button" onclick="window.teclearPin('3')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">3</button>
+          <button type="button" onclick="window.teclearPin('4')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">4</button>
+          <button type="button" onclick="window.teclearPin('5')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">5</button>
+          <button type="button" onclick="window.teclearPin('6')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">6</button>
+          <button type="button" onclick="window.teclearPin('7')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">7</button>
+          <button type="button" onclick="window.teclearPin('8')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">8</button>
+          <button type="button" onclick="window.teclearPin('9')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">9</button>
+          <button type="button" onclick="window.borrarPin()" class="h-12 rounded-xl bg-rose-950/40 text-rose-400 font-bold text-sm">Borrar</button>
+          <button type="button" onclick="window.teclearPin('0')" class="h-12 rounded-xl bg-slate-800 text-white font-black text-lg active:scale-95">0</button>
+          <button type="button" onclick="window.validarPin()" class="h-12 rounded-xl bg-emerald-600 text-white font-black text-sm">Entrar</button>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-500">Usa el PIN asignado en Administración</p>
+    </div>
+  </div>
+
+  <!-- APLICACIÓN MÓVIL REPARTIDOR -->
+  <div class="w-full max-w-full md:max-w-md bg-slate-100 min-h-screen md:min-h-[860px] md:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden pb-20">
+    <header class="bg-slate-950 text-white p-4 shadow-md sticky top-0 z-30 flex justify-between items-center">
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] tracking-widest text-emerald-400 font-black uppercase">MAF GAS MÓVIL</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </div>
+        <h1 class="font-black text-base leading-tight" id="lbl-nombre-rep">Ruta en Espera</h1>
+      </div>
+      <div class="text-right">
+        <button type="button" onclick="window.sincronizarConBD()" class="px-2.5 py-1 text-[10px] font-black rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
+          🔄 Sincronizar
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 overflow-y-auto no-scrollbar space-y-4">
+      <section id="sec-domicilios" class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h2 class="font-black text-sm text-slate-900 uppercase">Domicilios por Entregar</h2>
+          <span id="badge-contador-pedidos" class="px-2 py-0.5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full">0 Pendientes</span>
+        </div>
+        <div id="lista-pedidos-asignados" class="space-y-3">
+          <div class="text-center py-12 bg-white rounded-2xl border border-slate-200">
+            <span class="text-3xl block mb-1">🛵</span>
+            <p class="text-xs font-bold text-slate-700">Sin despachos asignados.</p>
+            <p class="text-[11px] text-slate-400">Los pedidos asignados por radio aparecerán aquí.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-calle" class="space-y-3" style="display: none;">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b pb-2">
+            <h2 class="font-black text-sm text-slate-900 uppercase">Venta Espontánea en Calle</h2>
+            <p class="text-[11px] text-slate-500">Crea una factura directa en ruta con descuento, vueltas y PDF al WhatsApp.</p>
+          </div>
+          <button type="button" onclick="window.abrirModalFacturaCalle()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2">
+            <span>🛒</span> <span>Abrir Factura de Venta en Calle</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="sec-alarmas" class="space-y-3" style="display: none;">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="border-b pb-2">
+            <div class="flex justify-between items-center">
+              <h2 class="font-black text-sm text-slate-900 uppercase">Cilindros por Vencer en Ruta</h2>
+              <span id="badge-alertas-rep" class="px-2 py-0.5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full">0 Alertas</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Hogares cercanos a quedarse sin gas o para recuperar pipeta.</p>
+          </div>
+          <div id="lista-alarmas-repartidor" class="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+            <p class="text-slate-400 italic text-center py-6 text-xs">No hay alertas de consumo registradas aún.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2.5 px-4 z-30 flex justify-around items-center">
+      <button type="button" onclick="window.cambiarSeccion('domicilios')" id="nav-domicilios" class="flex flex-col items-center text-emerald-600 font-black text-[11px]">
+        <span class="text-xl">🛵</span>
+        <span class="mt-0.5">Domicilios</span>
+      </button>
+      <button type="button" onclick="window.cambiarSeccion('calle')" id="nav-calle" class="flex flex-col items-center text-slate-400 font-bold text-[11px]">
+        <span class="text-xl">✋</span>
+        <span class="mt-0.5">Venta Calle</span>
+      </button>
+      <button type="button" onclick="window.cambiarSeccion('alarmas')" id="nav-alarmas" class="flex flex-col items-center text-slate-400 font-bold text-[11px]">
+        <span class="text-xl">🔔</span>
+        <span class="mt-0.5">Por Vencer</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL FACTURACIÓN Y ENTREGA -->
+  <div id="modal-facturacion-repartidor" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-3" style="display: none;">
+    <div class="bg-white w-full max-w-lg rounded-t-3xl md:rounded-3xl p-5 space-y-3.5 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b pb-2">
+        <div>
+          <span class="text-[10px] font-black uppercase text-emerald-600 block">Factura & Remisión Móvil</span>
+          <h3 class="font-black text-base text-slate-900" id="mod-fac-titulo">Facturar Entrega</h3>
+        </div>
+        <button type="button" onclick="window.cerrarModalFacturacion()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="font-black uppercase text-slate-600 text-[10px]">Datos de Entrega (Editables)</span>
+          <button type="button" onclick="window.toggleAltaRapidaCalle()" class="text-indigo-600 font-bold text-[11px] hover:underline" id="btn-alta-calle-toggle">+ Cliente Nuevo</button>
+        </div>
+
+        <div id="box-alta-calle" class="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200 space-y-2" style="display: none;">
+          <div class="grid grid-cols-2 gap-2">
+            <div><label class="block text-[9px] font-bold text-slate-500">Nombre / Apodo</label><input type="text" id="calle-cli-nom" placeholder="Ej: Vecino tienda" class="w-full p-2 bg-white border rounded-lg font-bold"></div>
+            <div><label class="block text-[9px] font-bold text-slate-500">Teléfono (WhatsApp)</label><input type="tel" id="calle-cli-tel" placeholder="310..." class="w-full p-2 bg-white border rounded-lg font-bold"></div>
+          </div>
+          <button type="button" onclick="window.guardarClienteDesdeCalle()" class="w-full py-2 bg-indigo-600 text-white font-black rounded-lg text-xs">Asociar Cliente</button>
+        </div>
+
+        <div id="box-buscador-calle">
+          <input type="text" id="busq-cliente-calle" oninput="window.filtrarClientesCalle(this.value)" placeholder="🔍 Buscar cliente registrado..." class="w-full p-2 bg-white border rounded-xl font-bold mb-1.5 outline-none">
+          <select id="sel-cliente-calle" onchange="window.cargarDatosClienteEnCampos(this.value)" class="w-full p-2 bg-white border rounded-xl font-bold text-xs"></select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t">
+          <div>
+            <label class="block font-bold text-slate-500 text-[10px]">Barrio *</label>
+            <input type="text" id="fac-cli-barrio" placeholder="Barrio" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-500 text-[10px]">Dirección Exacta (Precisar) *</label>
+            <input type="text" id="fac-cli-dir" placeholder="Calle, casa, referencia" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t">
+          <div>
+            <label class="block font-bold text-slate-500 text-[10px]">Teléfono WhatsApp *</label>
+            <input type="tel" id="fac-cli-tel" placeholder="Número celular" class="w-full p-2 bg-white border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-indigo-900 text-[10px]">¿Cada cuántos días se le acaba? *</label>
+            <input type="number" id="fac-cli-dias" value="30" min="1" class="w-full p-2 bg-indigo-50 border border-indigo-200 rounded-xl font-black text-center text-indigo-950 outline-none">
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <span class="font-black uppercase text-slate-700 block text-[11px]">Productos / Servicios en esta Factura:</span>
+        <div id="lista-productos-factura-rep" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-1.5 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="font-black uppercase text-amber-950 text-[10px]">Descuento Especial</span>
+          <span class="text-[10px] text-amber-700 font-semibold">Promoción u orden</span>
+        </div>
+        <div class="grid grid-cols-12 gap-2">
+          <div class="col-span-4">
+            <label class="block text-[9px] font-bold text-slate-500 mb-0.5">Monto ($)</label>
+            <input type="text" id="fac-descuento-monto" value="0" oninput="window.formatearMilesInput(this); window.recalcularTotalFacturaRep();" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-black text-rose-700 outline-none">
+          </div>
+          <div class="col-span-8">
+            <label class="block text-[9px] font-bold text-slate-500 mb-0.5">Motivo / Concepto del Descuento</label>
+            <input type="text" id="fac-descuento-motivo" placeholder="Ej: Promoción autorizada" class="w-full p-2 bg-white border border-amber-300 rounded-xl font-bold outline-none">
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between items-center bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+          <span class="font-bold uppercase text-emerald-900 text-xs">Total Neto a Cobrar:</span>
+          <span class="text-2xl font-black text-emerald-800" id="fac-total-neto-lbl">$0</span>
+        </div>
+
+        <div class="grid grid-cols-5 gap-1 font-bold text-[10px]">
+          <button type="button" onclick="window.setMedioRep('efectivo')" id="mrep-efectivo" class="py-2 rounded-xl bg-emerald-600 text-white border border-emerald-600 font-black">Efectivo</button>
+          <button type="button" onclick="window.setMedioRep('nequi')" id="mrep-nequi" class="py-2 rounded-xl bg-white text-slate-700 border font-bold">Nequi</button>
+          <button type="button" onclick="window.setMedioRep('transferencia')" id="mrep-transferencia" class="py-2 rounded-xl bg-white text-slate-700 border font-bold">Transf.</button>
+          <button type="button" onclick="window.setMedioRep('mixto')" id="mrep-mixto" class="py-2 rounded-xl bg-white text-slate-700 border font-bold">Mixto</button>
+          <button type="button" onclick="window.setMedioRep('credito')" id="mrep-credito" class="py-2 rounded-xl bg-white text-slate-700 border font-bold">Crédito</button>
+        </div>
+
+        <div id="bloque-mixto-rep" class="grid grid-cols-3 gap-1.5 p-2 bg-slate-50 rounded-xl border" style="display: none;">
+          <div><label class="text-[9px] font-bold block text-slate-500">Efectivo</label><input type="text" id="rmix-efectivo" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-1.5 bg-white border rounded-lg font-bold"></div>
+          <div><label class="text-[9px] font-bold block text-slate-500">Nequi</label><input type="text" id="rmix-nequi" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-1.5 bg-white border rounded-lg font-bold"></div>
+          <div><label class="text-[9px] font-bold block text-slate-500">Transf.</label><input type="text" id="rmix-transf" value="0" oninput="window.formatearMilesInput(this)" class="w-full p-1.5 bg-white border rounded-lg font-bold"></div>
+        </div>
+
+        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 space-y-1 text-[11px]">
+          <label class="flex items-center gap-2 font-bold text-amber-950 cursor-pointer">
+            <input type="checkbox" id="chk-fuga-rep" checked class="w-4 h-4 text-emerald-600 rounded">
+            <span>Prueba de agua jabonosa realizada (Sin fugas)</span>
+          </label>
+        </div>
+      </div>
+
+      <button type="button" onclick="window.confirmarCobroYEntrega()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
+        <span>📄 Cobrar, Descargar PDF y Enviar a WhatsApp</span>
+      </button>
+
+    </div>
+  </div>
+
+  <script>
+    // CONEXIÓN DIRECTA A TU SERVIDOR DIGITALOCEAN
+    const API_BASE = 'http://165.245.235.213:3000/api';
+
+    const api = {
+      async get(table, query = '') {
+        try {
+          const res = await fetch(`${API_BASE}/${table}${query}`);
+          return await res.json();
+        } catch(e) { return []; }
+      },
+      async post(table, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      },
+      async put(table, id, data) {
+        try {
+          const res = await fetch(`${API_BASE}/${table}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          return await res.json();
+        } catch(e) { return null; }
+      }
+    };
+
+    var pinRepartidorActual = '';
+    var repartidorIdBD = null;
+    var nombreRepartidorActivo = 'Ruta en Espera';
+    var medioPagoRep = 'efectivo';
+    var pedidoEnCursoId = null;
+
+    // CATÁLOGO DINÁMICO LEÍDO DESDE LA BASE DE DATOS
+    var catalogoGas = [
+      { id: 'GAS-33', nombre: 'Cilindro de 33 lb', precio: 133000 },
+      { id: 'GAS-40', nombre: 'Cilindro de 40 lb', precio: 143000 },
+      { id: 'GAS-80', nombre: 'Cilindro de 80 lb', precio: 245000 },
+      { id: 'GAS-100', nombre: 'Cilindro de 100 lb', precio: 318000 },
+      { id: 'ACC-01', nombre: 'Regulador Gas Premium', precio: 45000 },
+      { id: 'ACC-02', nombre: 'Manguera Reforzada (Metro)', precio: 9000 },
+      { id: 'SRV-01', nombre: 'Asistencia Técnica / Fuga', precio: 25000 }
+    ];
+
+    // INICIALIZADO EN 0
+    var carritoFacturaRep = { 'GAS-33': 1 };
+    var clientesDB = [];
+    var pedidosRuta = [];
+
+    window.formatearMilesInput = function(input) {
+      var val = input.value.replace(/\D/g, '');
+      input.value = val === '' ? '' : Number(val).toLocaleString('es-CO');
+    };
+
+    window.limpiarValorMoneda = function(valStr) {
+      if (!valStr) return 0;
+      var num = parseFloat(String(valStr).replace(/\./g, '').replace(/,/g, '').replace(/\$/g, '').trim());
+      return isNaN(num) ? 0 : num;
+    };
+
+    window.teclearPin = function(d) {
+      var inp = document.getElementById('input-pin-gas');
+      if (inp.value.length < 4) inp.value += d;
+      if (inp.value.length === 4) window.validarPin();
+    };
+
+    window.borrarPin = function() {
+      var inp = document.getElementById('input-pin-gas');
+      inp.value = inp.value.slice(0, -1);
+    };
+
+    window.validarPin = async function() {
+      var pinIngresado = document.getElementById('input-pin-gas').value;
+      
+      try {
+        const reps = await api.get('repartidores_gas');
+        const empEncontrado = (Array.isArray(reps)) ? reps.find(r => r.pin === pinIngresado) : null;
+
+        if (empEncontrado) {
+          pinRepartidorActual = pinIngresado;
+          repartidorIdBD = empEncontrado.id;
+          nombreRepartidorActivo = `${empEncontrado.nombre} (${empEncontrado.vehiculo})`;
+          document.getElementById('lbl-nombre-rep').innerText = nombreRepartidorActivo;
+          document.getElementById('pantalla-pin-rep-gas').style.display = 'none';
+
+          await window.sincronizarConBD();
+        } else {
+          alert("PIN no encontrado o no registrado en Administración.");
+          document.getElementById('input-pin-gas').value = '';
+        }
+      } catch (err) {
+        alert("Error de conexión al verificar PIN.");
+      }
+    };
+
+    window.sincronizarConBD = async function() {
+      try {
+        // 1. Cargar productos y precios oficiales
+        const prods = await api.get('productos_gas');
+        if (prods && prods.length > 0) {
+          catalogoGas = prods.map(p => ({
+            id: p.id,
+            nombre: p.nombre,
+            precio: parseFloat(p.precio_venta)
+          }));
+        }
+
+        // 2. Cargar domicilios asignados
+        const domData = await api.get('pedidos_domicilio_gas');
+        if (domData && Array.isArray(domData)) {
+          pedidosRuta = domData.filter(d => d.estado === 'en_camino').map(d => ({
+            id: d.id,
+            consecutivo: d.consecutivo,
+            cliente: d.nombre_cliente,
+            tel: d.telefono_cliente || '-',
+            barrio: d.barrio || 'Inírida',
+            dir: d.direccion || 'Dirección',
+            gasId: d.capacidad_solicitada || 'GAS-33',
+            cant: d.cantidad || 1,
+            pago: d.forma_pago || 'efectivo',
+            hora: d.fecha_creacion ? new Date(d.fecha_creacion).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Hoy'
+          }));
+        }
+
+        // 3. Cargar clientes
+        const cliData = await api.get('clientes_gas');
+        if (cliData && Array.isArray(cliData)) {
+          clientesDB = cliData.map(c => ({
+            id: String(c.id),
+            nombre: c.nombre_titular,
+            tel: c.telefono || '-',
+            barrio: c.barrio || 'Inírida',
+            dir: c.direccion || 'En ruta',
+            cap: c.capacidad_habitual || '33 lb',
+            diasCiclo: c.dias_duracion_ciclo || 30,
+            fechaUltima: c.fecha_ultima_compra ? c.fecha_ultima_compra.split('T')[0] : '2026-10-01'
+          }));
+        }
+      } catch (err) {
+        console.warn("Modo local o sin respuesta:", err);
+      }
+
+      window.renderizarPedidosRuta();
+      window.renderizarAlarmasRepartidor();
+      window.cargarSelectClientesCalle();
+    };
+
+    window.cambiarSeccion = function(sec) {
+      ['domicilios', 'calle', 'alarmas'].forEach(s => {
+        var elSec = document.getElementById('sec-' + s);
+        var elNav = document.getElementById('nav-' + s);
+        if (elSec) elSec.style.display = (s === sec) ? 'block' : 'none';
+        if (elNav) {
+          elNav.className = (s === sec)
+            ? "flex flex-col items-center text-emerald-600 font-black text-[11px]"
+            : "flex flex-col items-center text-slate-400 font-bold text-[11px]";
+        }
+      });
+
+      if (sec === 'alarmas') window.renderizarAlarmasRepartidor();
+      if (sec === 'calle') window.cargarSelectClientesCalle();
+    };
+
+    window.renderizarPedidosRuta = function() {
+      var cont = document.getElementById('lista-pedidos-asignados');
+      document.getElementById('badge-contador-pedidos').innerText = `${pedidosRuta.length} Pendientes`;
+      cont.innerHTML = '';
+
+      if (pedidosRuta.length === 0) {
+        cont.innerHTML = `
+          <div class="text-center py-12 bg-white rounded-2xl border border-slate-200">
+            <span class="text-3xl block mb-1">🛵</span>
+            <p class="text-xs font-bold text-slate-700">No tienes domicilios pendientes.</p>
+            <p class="text-[11px] text-slate-400">Atento al radio o a la venta directa en calle.</p>
+          </div>
+        `;
+        return;
+      }
+
+      pedidosRuta.forEach(p => {
+        var prod = catalogoGas.find(c => c.id === p.gasId);
+        cont.innerHTML += `
+          <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3 text-xs">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="font-mono text-[10px] text-indigo-900 font-black bg-indigo-50 px-2 py-0.5 rounded">${p.consecutivo} • ${p.hora}</span>
+                <h3 class="font-black text-sm text-slate-900 mt-1">${p.cliente}</h3>
+                <p class="text-slate-500 font-semibold">${p.barrio} - ${p.dir}</p>
+              </div>
+              <a href="tel:${p.tel}" class="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-black text-sm">📞</a>
+            </div>
+
+            <div class="flex justify-between items-center border-t pt-2 bg-slate-50 p-2.5 rounded-xl">
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold block">Solicitado:</span>
+                <b class="text-slate-800">${p.cant}x ${prod ? prod.nombre : 'Gas'}</b>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 font-bold block">Pago Esperado:</span>
+                <b class="text-emerald-700 uppercase font-black">${p.pago}</b>
+              </div>
+            </div>
+
+            <button type="button" onclick="window.abrirModalEntregaDomicilio('${p.id}')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md text-xs">
+              ✓ Entregar Mediante Factura / Precisar Dirección
+            </button>
+          </div>
+        `;
+      });
+    };
+
+    window.abrirModalEntregaDomicilio = function(domId) {
+      var dom = pedidosRuta.find(d => d.id === domId);
+      if (!dom) return;
+
+      pedidoEnCursoId = dom.id;
+      document.getElementById('mod-fac-titulo').innerText = `Entregar ${dom.consecutivo} - ${dom.cliente}`;
+      document.getElementById('fac-cli-barrio').value = dom.barrio;
+      document.getElementById('fac-cli-dir').value = dom.dir;
+      document.getElementById('fac-cli-tel').value = dom.tel;
+      document.getElementById('fac-cli-dias').value = 30;
+
+      var cliRegistrado = clientesDB.find(c => c.tel === dom.tel || c.nombre.toLowerCase() === dom.cliente.toLowerCase());
+      if (cliRegistrado) {
+        document.getElementById('fac-cli-dias').value = cliRegistrado.diasCiclo || 30;
+      }
+
+      carritoFacturaRep = {};
+      carritoFacturaRep[dom.gasId || 'GAS-33'] = dom.cant || 1;
+
+      window.setMedioRep(dom.pago || 'efectivo');
+      window.renderizarProductosEnModalFactura();
+      document.getElementById('modal-facturacion-repartidor').style.display = 'flex';
+    };
+
+    window.abrirModalFacturaCalle = function() {
+      pedidoEnCursoId = null;
+      document.getElementById('mod-fac-titulo').innerText = "Venta Directa en Ruta";
+      document.getElementById('fac-cli-barrio').value = '';
+      document.getElementById('fac-cli-dir').value = '';
+      document.getElementById('fac-cli-tel').value = '';
+      document.getElementById('fac-cli-dias').value = 30;
+
+      carritoFacturaRep = { 'GAS-33': 1 };
+      window.setMedioRep('efectivo');
+      window.renderizarProductosEnModalFactura();
+      document.getElementById('modal-facturacion-repartidor').style.display = 'flex';
+    };
+
+    window.cerrarModalFacturacion = function() {
+      document.getElementById('modal-facturacion-repartidor').style.display = 'none';
+    };
+
+    window.renderizarProductosEnModalFactura = function() {
+      var cont = document.getElementById('lista-productos-factura-rep');
+      cont.innerHTML = catalogoGas.map(p => {
+        var cant = carritoFacturaRep[p.id] || 0;
+        return `
+          <div class="flex justify-between items-center p-2 bg-slate-50 border rounded-xl">
+            <div>
+              <b class="text-slate-800 block text-[11px]">${p.nombre}</b>
+              <span class="text-[10px] text-slate-500 font-semibold">$${p.precio.toLocaleString()}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.cambiarCantProdFactura('${p.id}', -1)" class="w-6 h-6 rounded bg-white border font-bold text-xs">-</button>
+              <span class="w-5 text-center font-black">${cant}</span>
+              <button type="button" onclick="window.cambiarCantProdFactura('${p.id}', 1)" class="w-6 h-6 rounded bg-emerald-600 text-white font-bold text-xs">+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      window.recalcularTotalFacturaRep();
+    };
+
+    window.cambiarCantProdFactura = function(pId, delta) {
+      if (!carritoFacturaRep[pId]) carritoFacturaRep[pId] = 0;
+      carritoFacturaRep[pId] += delta;
+      if (carritoFacturaRep[pId] < 0) carritoFacturaRep[pId] = 0;
+      window.renderizarProductosEnModalFactura();
+    };
+
+    window.recalcularTotalFacturaRep = function() {
+      var subtotal = 0;
+      Object.keys(carritoFacturaRep).forEach(pId => {
+        var prod = catalogoGas.find(p => p.id === pId);
+        subtotal += (carritoFacturaRep[pId] * (prod ? prod.precio : 0));
+      });
+
+      var desc = window.limpiarValorMoneda(document.getElementById('fac-descuento-monto').value);
+      if (desc > subtotal) {
+        desc = subtotal;
+        document.getElementById('fac-descuento-monto').value = desc.toLocaleString('es-CO');
+      }
+
+      var neto = Math.max(0, subtotal - desc);
+      document.getElementById('fac-total-neto-lbl').innerText = `$${neto.toLocaleString()}`;
+      return { subtotal: subtotal, descuento: desc, totalNeto: neto };
+    };
+
+    window.setMedioRep = function(m) {
+      medioPagoRep = m;
+      ['efectivo', 'nequi', 'transferencia', 'mixto', 'credito'].forEach(opt => {
+        var b = document.getElementById('mrep-' + opt);
+        if (b) {
+          b.className = (opt === m)
+            ? "py-2 rounded-xl bg-emerald-600 text-white border border-emerald-600 font-black"
+            : "py-2 rounded-xl bg-white text-slate-700 border font-bold";
+        }
+      });
+      document.getElementById('bloque-mixto-rep').style.display = (m === 'mixto') ? 'grid' : 'none';
+    };
+
+    window.confirmarCobroYEntrega = async function() {
+      var chkFuga = document.getElementById('chk-fuga-rep').checked;
+      if (!chkFuga) return alert("Por seguridad debes certificar la prueba de agua jabonosa.");
+
+      var barrio = document.getElementById('fac-cli-barrio').value.trim();
+      var dir = document.getElementById('fac-cli-dir').value.trim();
+      var tel = document.getElementById('fac-cli-tel').value.trim();
+      var diasCiclo = parseInt(document.getElementById('fac-cli-dias').value) || 30;
+
+      if (!tel) return alert("Ingresa el número de teléfono para enviar la factura por WhatsApp.");
+
+      var totCalc = window.recalcularTotalFacturaRep();
+      if (totCalc.totalNeto <= 0) return alert("La factura debe tener al menos un producto.");
+
+      var motivoDesc = document.getElementById('fac-descuento-motivo').value.trim();
+      if (totCalc.descuento > 0 && !motivoDesc) {
+        return alert("Por favor escribe la nota del descuento.");
+      }
+
+      var nombreCliente = "Cliente en Ruta";
+      if (pedidoEnCursoId) {
+        var dom = pedidosRuta.find(d => d.id === pedidoEnCursoId);
+        if (dom) nombreCliente = dom.cliente;
+      } else {
+        var selCli = document.getElementById('sel-cliente-calle');
+        if (selCli.value) {
+          var cExistente = clientesDB.find(c => c.id === selCli.value);
+          if (cExistente) nombreCliente = cExistente.nombre;
+        }
+      }
+
+      var fechaHoy = new Date().toISOString().split('T')[0];
+
+      // 1. Guardar o actualizar cliente en PostgreSQL
+      try {
+        var cliEncontrado = clientesDB.find(c => c.tel === tel || c.nombre.toLowerCase() === nombreCliente.toLowerCase());
+        if (cliEncontrado && !isNaN(parseInt(cliEncontrado.id))) {
+          await api.put('clientes_gas', cliEncontrado.id, {
+            barrio: barrio || cliEncontrado.barrio,
+            direccion: dir || cliEncontrado.dir,
+            dias_duracion_ciclo: diasCiclo,
+            fecha_ultima_compra: fechaHoy
+          });
+        } else {
+          var resCli = await api.post('clientes_gas', {
+            nombre_titular: nombreCliente,
+            telefono: tel,
+            barrio: barrio || 'Inírida',
+            direccion: dir || 'En ruta',
+            capacidad_habitual: '33 lb',
+            dias_duracion_ciclo: diasCiclo,
+            fecha_ultima_compra: fechaHoy
+          });
+
+          if (resCli && resCli.data && resCli.data.length > 0) {
+            clientesDB.push({
+              id: String(resCli.data[0].id),
+              nombre: nombreCliente,
+              tel: tel,
+              barrio: barrio,
+              dir: dir,
+              cap: '33 lb',
+              diasCiclo: diasCiclo,
+              fechaUltima: fechaHoy
+            });
+          }
+        }
+      } catch (e) { console.warn(e); }
+
+      // 2. Si venía de pedido de domicilio, marcarlo como entregado
+      if (pedidoEnCursoId) {
+        try {
+          await api.put('pedidos_domicilio_gas', pedidoEnCursoId, {
+            estado: 'entregado'
+          });
+        } catch (e) { console.warn(e); }
+      }
+
+      var itemsFactura = [];
+      Object.keys(carritoFacturaRep).forEach(pId => {
+        if (carritoFacturaRep[pId] > 0) {
+          var prod = catalogoGas.find(p => p.id === pId);
+          itemsFactura.push({
+            id: pId,
+            nombre: prod.nombre,
+            cant: carritoFacturaRep[pId],
+            subtotal: carritoFacturaRep[pId] * prod.precio
+          });
+        }
+      });
+
+      var codDoc = `FAC-MOV-${Date.now().toString().slice(-4)}`;
+
+      // 3. Guardar factura formal en PostgreSQL
+      try {
+        await api.post('facturas_gas', {
+          codigo_factura: codDoc,
+          tipo_venta: pedidoEnCursoId ? 'Domicilio' : 'Ruta Calle',
+          cliente_nombre: nombreCliente,
+          cliente_telefono: tel,
+          barrio: barrio,
+          direccion: dir,
+          repartidor_nombre: nombreRepartidorActivo,
+          subtotal: totCalc.subtotal,
+          descuento: totCalc.descuento,
+          motivo_descuento: motivoDesc,
+          total: totCalc.totalNeto,
+          forma_pago: medioPagoRep,
+          pago_efectivo: (medioPagoRep === 'efectivo' ? totCalc.totalNeto : 0),
+          pago_nequi: (medioPagoRep === 'nequi' ? totCalc.totalNeto : 0),
+          pago_transferencia: (medioPagoRep === 'transferencia' ? totCalc.totalNeto : 0),
+          saldo_pendiente: (medioPagoRep === 'credito' ? totCalc.totalNeto : 0),
+          estado_pago: (medioPagoRep === 'credito') ? 'pendiente_credito' : 'pagada',
+          detalles_items: itemsFactura
+        });
+      } catch (e) { console.warn(e); }
+
+      var facturaData = {
+        codigo: codDoc,
+        cliente: nombreCliente,
+        tel: tel,
+        barrio: barrio,
+        dir: dir,
+        subtotal: totCalc.subtotal,
+        descuento: totCalc.descuento,
+        motivoDescuento: motivoDesc,
+        total: totCalc.totalNeto,
+        medio: medioPagoRep,
+        items: itemsFactura,
+        repartidor: nombreRepartidorActivo,
+        fecha: fechaHoy,
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      if (pedidoEnCursoId) {
+        pedidosRuta = pedidosRuta.filter(d => d.id !== pedidoEnCursoId);
+        window.renderizarPedidosRuta();
+      }
+
+      window.generarPDFRepartidor(facturaData);
+      window.enviarWhatsAppRepartidor(facturaData);
+
+      alert(`¡Entrega y Factura ${codDoc} guardadas en PostgreSQL!\nPDF generado y WhatsApp abierto.`);
+      window.cerrarModalFacturacion();
+      window.renderizarAlarmasRepartidor();
+    };
+
+    window.generarPDFRepartidor = function(fac) {
+      try {
+        if (!window.jspdf) return;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: [80, 190] });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('DISTRIBUIDORA MAF GAS', 40, 10, { align: 'center' });
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('GRUPO MAF • NIT 901.234.567-8', 40, 14, { align: 'center' });
+        doc.text('Entrega en Ruta • Inírida, Guainía', 40, 18, { align: 'center' });
+
+        doc.line(5, 21, 75, 21);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`REMISIÓN / FACTURA: ${fac.codigo}`, 5, 26);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Fecha: ${fac.fecha}  Hora: ${fac.hora}`, 5, 30);
+        doc.text(`Repartidor: ${fac.repartidor}`, 5, 34);
+        doc.text(`Cliente: ${fac.cliente}`, 5, 38);
+        doc.text(`Tel: ${fac.tel}  Barrio: ${fac.barrio}`, 5, 42);
+        doc.text(`Dir: ${fac.dir}`, 5, 46);
+
+        doc.line(5, 49, 75, 49);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Cant / Descripción', 5, 53);
+        doc.text('Subtotal', 75, 53, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+
+        var y = 58;
+        fac.items.forEach(it => {
+          doc.text(`${it.cant}x ${it.nombre}`, 5, y);
+          doc.text(`$${it.subtotal.toLocaleString()}`, 75, y, { align: 'right' });
+          y += 5;
+        });
+
+        doc.line(5, y, 75, y);
+        y += 5;
+
+        doc.text(`Subtotal:`, 5, y);
+        doc.text(`$${fac.subtotal.toLocaleString()}`, 75, y, { align: 'right' });
+        y += 4;
+
+        if (fac.descuento > 0) {
+          doc.text(`Descuento (${fac.motivoDescuento}):`, 5, y);
+          doc.text(`-$${fac.descuento.toLocaleString()}`, 75, y, { align: 'right' });
+          y += 4;
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(`TOTAL PAGADO:`, 5, y);
+        doc.text(`$${fac.total.toLocaleString()}`, 75, y, { align: 'right' });
+        y += 5;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Medio de pago: ${fac.medio.toUpperCase()}`, 5, y);
+        y += 5;
+
+        doc.line(5, y, 75, y);
+        y += 5;
+        doc.setFontSize(7);
+        doc.text('¡Gracias por elegir MAF Gas!', 40, y, { align: 'center' });
+        y += 3.5;
+        doc.text('Certificado de prueba de fugas realizada.', 40, y, { align: 'center' });
+
+        doc.save(`Remision_${fac.codigo}_${fac.cliente.replace(/\s+/g,'_')}.pdf`);
+      } catch (err) { console.warn(err); }
+    };
+
+    window.enviarWhatsAppRepartidor = function(fac) {
+      var tel = fac.tel.replace(/\D/g, '');
+      if (!tel || tel.length < 7 || tel === '-') return;
+
+      var mensaje = `*DISTRIBUIDORA MAF GAS - INÍRIDA*\n`;
+      mensaje += `Hola *${fac.cliente}*, confirmamos tu entrega de gas.\n\n`;
+      mensaje += `*Remisión:* ${fac.codigo}\n`;
+      mensaje += `*Fecha:* ${fac.fecha} ${fac.hora}\n`;
+      mensaje += `*Repartidor:* ${fac.repartidor}\n`;
+      mensaje += `*Total:* $${fac.total.toLocaleString()} (${fac.medio.toUpperCase()})\n`;
+      if (fac.descuento > 0) {
+        mensaje += `*Descuento:* -$${fac.descuento.toLocaleString()} (${fac.motivoDescuento})\n`;
+      }
+      mensaje += `\n*Detalle de Entrega:*\n`;
+      fac.items.forEach(it => {
+        mensaje += `• ${it.cant}x ${it.nombre} = $${it.subtotal.toLocaleString()}\n`;
+      });
+      mensaje += `\nDirección registrada: ${fac.barrio} - ${fac.dir}\n`;
+      mensaje += `Tu comprobante en PDF ha sido generado. ¡Gracias por confiar en MAF Gas!`;
+
+      var url = `https://wa.me/57${tel}?text=${encodeURIComponent(mensaje)}`;
+      window.open(url, '_blank');
+    };
+
+    window.cargarSelectClientesCalle = function() {
+      var sel = document.getElementById('sel-cliente-calle');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecciona o busca un cliente...</option>';
+      clientesDB.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nombre} • ${c.barrio} (Tel: ${c.tel})</option>`;
+      });
+    };
+
+    window.filtrarClientesCalle = function(q) {
+      var val = (q || '').toLowerCase().trim();
+      var sel = document.getElementById('sel-cliente-calle');
+      if (!sel) return;
+      sel.innerHTML = '';
+
+      var filtrados = clientesDB.filter(c => c.nombre.toLowerCase().includes(val) || c.tel.includes(val) || c.barrio.toLowerCase().includes(val));
+      if (filtrados.length === 0) {
+        sel.innerHTML = '<option value="">No encontrado (Pulsa + Cliente Nuevo)</option>';
+        return;
+      }
+      filtrados.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nombre} • ${c.barrio} (Tel: ${c.tel})</option>`;
+      });
+      if (sel.options.length > 0) window.cargarDatosClienteEnCampos(sel.options[0].value);
+    };
+
+    window.cargarDatosClienteEnCampos = function(cliId) {
+      var c = clientesDB.find(it => it.id === cliId);
+      if (!c) return;
+      document.getElementById('fac-cli-barrio').value = c.barrio;
+      document.getElementById('fac-cli-dir').value = c.dir;
+      document.getElementById('fac-cli-tel').value = c.tel;
+      document.getElementById('fac-cli-dias').value = c.diasCiclo || 30;
+    };
+
+    window.toggleAltaRapidaCalle = function() {
+      var box = document.getElementById('box-alta-calle');
+      box.style.display = (box.style.display === 'none') ? 'block' : 'none';
+    };
+
+    window.guardarClienteDesdeCalle = async function() {
+      var nom = document.getElementById('calle-cli-nom').value.trim() || ("Cliente " + Date.now().toString().slice(-4));
+      var tel = document.getElementById('calle-cli-tel').value.trim() || '-';
+
+      var nuevo = {
+        nombre_titular: nom,
+        telefono: tel,
+        barrio: 'Inírida',
+        direccion: 'Entrega en calle',
+        capacidad_habitual: '33 lb',
+        dias_duracion_ciclo: 30,
+        fecha_ultima_compra: new Date().toISOString().split('T')[0]
+      };
+
+      try {
+        var res = await api.post('clientes_gas', nuevo);
+        var idNuevo = (res && res.data && res.data[0]) ? String(res.data[0].id) : 'cli-' + Date.now();
+        nuevo.id = idNuevo;
+        clientesDB.push({
+          id: idNuevo,
+          nombre: nom,
+          tel: tel,
+          barrio: 'Inírida',
+          dir: 'Entrega en calle',
+          cap: '33 lb',
+          diasCiclo: 30,
+          fechaUltima: nuevo.fecha_ultima_compra
+        });
+        window.cargarSelectClientesCalle();
+        document.getElementById('sel-cliente-calle').value = idNuevo;
+        window.cargarDatosClienteEnCampos(idNuevo);
+        window.toggleAltaRapidaCalle();
+        alert(`Cliente ${nom} asociado en PostgreSQL.`);
+      } catch (err) {
+        alert("Error asociando cliente.");
+      }
+    };
+
+    window.renderizarAlarmasRepartidor = function() {
+      var cont = document.getElementById('lista-alarmas-repartidor');
+      if (!cont) return;
+      var hoy = new Date();
+      cont.innerHTML = '';
+      var alertas = 0;
+
+      clientesDB.forEach(c => {
+        var fechaU = new Date(c.fechaUltima);
+        var diffDias = Math.floor((hoy - fechaU) / (1000 * 60 * 60 * 24));
+        var diasRestantes = c.diasCiclo - diffDias;
+
+        if (diasRestantes <= 4) {
+          alertas++;
+          var esVencido = diasRestantes < 0;
+          cont.innerHTML += `
+            <div class="p-3.5 rounded-2xl border ${esVencido ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'} space-y-2 text-xs">
+              <div class="flex justify-between items-start">
+                <div>
+                  <b class="text-slate-900 block font-bold">${c.nombre}</b>
+                  <span class="text-slate-500 font-semibold">${c.barrio} - ${c.dir}</span>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${esVencido ? 'bg-rose-200 text-rose-900' : 'bg-amber-200 text-amber-950'}">
+                  ${esVencido ? `Vencido (+${Math.abs(diasRestantes)}d)` : `Vence en ${diasRestantes}d`}
+                </span>
+              </div>
+
+              <div class="flex justify-between items-center text-[11px] pt-1 border-t">
+                <span class="text-slate-500 font-bold">Cilindro: <b>${c.cap}</b></span>
+                <div class="flex gap-1.5">
+                  <a href="https://wa.me/57${c.tel}?text=Hola%20${encodeURIComponent(c.nombre)},%20estamos%20cerca%20en%20ruta.%20Su%20cilindro%20de%20gas%20está%20pronto%20a%20agotarse." target="_blank" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold">WhatsApp</a>
+                  <button type="button" onclick="window.forzarRecargaRepartidor('${c.id}')" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-bold">Recargar (0)</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      document.getElementById('badge-alertas-rep').innerText = `${alertas} Alertas`;
+      if (alertas === 0) {
+        cont.innerHTML = '<p class="text-slate-400 italic text-center py-6 text-xs">No hay clientes con cilindros por vencer en este sector.</p>';
+      }
+    };
+
+    window.forzarRecargaRepartidor = async function(cliId) {
+      var c = clientesDB.find(it => it.id === cliId);
+      if (!c) return;
+      var fechaHoy = new Date().toISOString().split('T')[0];
+      c.fechaUltima = fechaHoy;
+
+      if (!isNaN(parseInt(cliId))) {
+        try {
+          await api.put('clientes_gas', cliId, { fecha_ultima_compra: fechaHoy });
+        } catch (e) { console.warn(e); }
+      }
+
+      alert(`¡Recarga asentada para ${c.nombre}! El contador retornó a 0 días.`);
+      window.renderizarAlarmasRepartidor();
+    };
+
+    window.addEventListener('DOMContentLoaded', function() {});
+  </script>
+</body>
+</html>
