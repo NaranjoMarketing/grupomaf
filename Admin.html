@@ -405,7 +405,7 @@
             <h2 class="text-lg lg:text-xl font-black text-slate-900">Control de Mantenimientos Preventivos por Odómetro</h2>
             <p class="text-xs text-slate-500">Alertas automáticas según manuales técnicos para camiones y motocargueros.</p>
           </div>
-          <button type="button" onclick="window.abrirModalVehiculo()" class="px-4 py-2 bg-slate-800 text-white font-black text-xs rounded-xl">
+          <button type="button" onclick="window.abrirModalVehiculo()" class="px-4 py-2 bg-slate-800 text-white font-black text-xs rounded-xl shadow-md">
             + Nuevo Vehículo
           </button>
         </div>
@@ -542,6 +542,120 @@
     </div>
   </div>
 
+  <!-- MODAL FLOTANTE: CREAR / EDITAR REPARTIDOR -->
+  <div id="modal-empleado-admin" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900" id="titulo-modal-rep">Registrar Repartidor</h3>
+        <button type="button" onclick="window.cerrarModalEmpleado()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarEmpleadoAdminForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="mrep-id">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Nombre Completo *</label>
+          <input type="text" id="mrep-nombre" required placeholder="Ej: Wilson Gómez" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Vehículo Asignado / Placa *</label>
+          <input type="text" id="mrep-vehiculo" required placeholder="Ej: Motocarguero (XYZ-123)" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Teléfono</label>
+            <input type="tel" id="mrep-tel" placeholder="312..." class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">PIN Acceso Móvil (4 dígitos) *</label>
+            <input type="text" id="mrep-pin" required maxlength="4" placeholder="1234" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black text-center text-sm outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block font-black text-emerald-700 mb-1">Comisión por Pipeta Entregada ($)</label>
+          <input type="number" id="mrep-comision" value="2000" min="0" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black outline-none">
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-sm mt-2 transition-all">
+          Guardar Repartidor en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL FLOTANTE: REGISTRAR VEHÍCULO FLOTA -->
+  <div id="modal-vehiculo-admin" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900">Registrar Vehículo en Flota</h3>
+        <button type="button" onclick="window.cerrarModalVehiculo()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarVehiculoAdminForm(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Placa / Identificación *</label>
+          <input type="text" id="mveh-placa" required placeholder="Ej: ABC123" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black uppercase outline-none">
+        </div>
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Tipo de Vehículo *</label>
+          <select id="mveh-tipo" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+            <option value="Camión NHR">Camión NHR</option>
+            <option value="Motocarguero">Motocarguero</option>
+            <option value="Camioneta Estacas">Camioneta Estacas</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Capacidad Pipetas</label>
+            <input type="number" id="mveh-capacidad" value="20" min="1" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Odómetro Actual (km) *</label>
+            <input type="number" id="mveh-km" value="0" min="0" class="w-full p-2.5 bg-slate-50 border rounded-xl font-black outline-none">
+          </div>
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl shadow-md text-sm mt-2 transition-all">
+          Guardar Vehículo en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL FLOTANTE: ASENTAR GASTO -->
+  <div id="modal-gasto-admin" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-black text-lg text-slate-900">Registrar Egreso / Gasto</h3>
+        <button type="button" onclick="window.cerrarModalGasto()" class="p-1 font-bold text-slate-400 text-xl">✕</button>
+      </div>
+
+      <form onsubmit="window.guardarGastoAdminForm(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-black text-slate-600 mb-1">Concepto / Motivo *</label>
+          <input type="text" id="mgst-concepto" required placeholder="Ej: Arriendo bodega / Compra combustible" class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-black text-rose-700 mb-1">Monto Pagado ($) *</label>
+            <input type="number" id="mgst-monto" required min="1" placeholder="Ej: 150000" class="w-full p-2.5 bg-slate-50 border border-rose-200 rounded-xl font-black text-base text-rose-700 outline-none">
+          </div>
+          <div>
+            <label class="block font-black text-slate-600 mb-1">Fecha del Gasto *</label>
+            <input type="date" id="mgst-fecha" required class="w-full p-2.5 bg-slate-50 border rounded-xl font-bold outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block font-black text-indigo-950 mb-1">Tipo de Gasto *</label>
+          <select id="mgst-tipo" class="w-full p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl font-bold text-slate-800 outline-none">
+            <option value="fijo">Gasto FIJO Operativo (Afecta Punto de Equilibrio)</option>
+            <option value="imprevisto">Gasto IMPREVISTO / Extraordinario (Afecta Utilidad)</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl shadow-md text-sm mt-2 transition-all">
+          Guardar Gasto en Base de Datos
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: REGISTRAR / EDITAR CLIENTE Y TARIFAS ESPECIALES -->
   <div id="modal-cliente-admin" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3" style="display: none;">
     <div class="bg-white w-full max-w-xl rounded-3xl p-6 space-y-4 shadow-2xl max-h-[95vh] overflow-y-auto no-scrollbar">
@@ -602,10 +716,10 @@
             <span class="text-[10px] text-indigo-700 font-semibold">Deja en 0 para precio normal</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">33 lb ($133k)</label><input type="number" id="esp-33" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
-            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">40 lb ($143k)</label><input type="number" id="esp-40" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
-            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">80 lb ($245k)</label><input type="number" id="esp-80" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
-            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">100 lb ($318k)</label><input type="number" id="esp-100" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">33 lb ($133k)[cite: 13]</label><input type="number" id="esp-33" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">40 lb ($143k)[cite: 13]</label><input type="number" id="esp-40" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">80 lb ($245k)[cite: 13]</label><input type="number" id="esp-80" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
+            <div><label class="block text-[10px] font-bold text-slate-500 mb-0.5">100 lb ($318k)[cite: 13]</label><input type="number" id="esp-100" placeholder="0" class="w-full p-2 bg-white border rounded-xl font-black text-right outline-none"></div>
           </div>
         </div>
 
@@ -742,7 +856,6 @@
       }
     };
 
-    // PRODUCTOS & SERVICIOS: INICIALIZADOS EN STOCK 0
     var productosGas = [
       { id: 'GAS-33', sku: 'GAS-33', cat: 'GAS GLP', nombre: 'Cilindro de 33 lb', costo: 0, venta: 133000, stock: 0 },
       { id: 'GAS-40', sku: 'GAS-40', cat: 'GAS GLP', nombre: 'Cilindro de 40 lb', costo: 0, venta: 143000, stock: 0 },
@@ -809,7 +922,7 @@
     };
 
     // ==========================================
-    // FUNCIONES DEL MODAL PRODUCTO / ACCESORIO
+    // MODAL PRODUCTO / ACCESORIO
     // ==========================================
     window.abrirModalProducto = function() {
       document.getElementById('prod-sku').value = '';
@@ -862,7 +975,164 @@
     };
 
     // ==========================================
-    // FUNCIONES FACTURAS DE COMPRA / INGRESO DE PROVEEDOR
+    // MODAL REPARTIDOR (VENTANA FLOTANTE)
+    // ==========================================
+    window.abrirModalEmpleado = function() {
+      document.getElementById('mrep-id').value = '';
+      document.getElementById('mrep-nombre').value = '';
+      document.getElementById('mrep-vehiculo').value = '';
+      document.getElementById('mrep-tel').value = '';
+      document.getElementById('mrep-pin').value = '';
+      document.getElementById('mrep-comision').value = 2000;
+      document.getElementById('titulo-modal-rep').innerText = 'Registrar Repartidor';
+      document.getElementById('modal-empleado-admin').style.display = 'flex';
+    };
+
+    window.cerrarModalEmpleado = function() {
+      document.getElementById('modal-empleado-admin').style.display = 'none';
+    };
+
+    window.guardarEmpleadoAdminForm = async function(e) {
+      e.preventDefault();
+      var id = document.getElementById('mrep-id').value;
+      var nom = document.getElementById('mrep-nombre').value.trim();
+      var veh = document.getElementById('mrep-vehiculo').value.trim();
+      var tel = document.getElementById('mrep-tel').value.trim() || '-';
+      var pin = document.getElementById('mrep-pin').value.trim() || '1234';
+      var com = parseFloat(document.getElementById('mrep-comision').value) || 2000;
+
+      var payload = {
+        nombre: nom,
+        vehiculo: veh,
+        telefono: tel,
+        rol: 'Repartidor',
+        pin: pin,
+        comision: com
+      };
+
+      try {
+        if (id) {
+          await api.put('repartidores_gas', id, payload);
+          var emp = empleadosGas.find(it => it.id === id);
+          if (emp) Object.assign(emp, payload);
+          alert(`¡Repartidor ${nom} actualizado!`);
+        } else {
+          payload.saldo_prestamo = 0;
+          payload.pipetas_mes = 0;
+          payload.ventas_mes = 0;
+          var res = await api.post('repartidores_gas', payload);
+          var nuevoId = (res && res.data && res.data[0]) ? String(res.data[0].id) : 'emp-' + Date.now();
+          payload.id = nuevoId;
+          empleadosGas.push(payload);
+          alert(`¡Repartidor ${nom} registrado en el VPS!`);
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+
+      window.cerrarModalEmpleado();
+      window.renderizarEquipo();
+    };
+
+    window.editarEmpleado = function(id) {
+      var emp = empleadosGas.find(e => e.id === id);
+      if (!emp) return;
+
+      document.getElementById('mrep-id').value = emp.id;
+      document.getElementById('mrep-nombre').value = emp.nombre;
+      document.getElementById('mrep-vehiculo').value = emp.vehiculo;
+      document.getElementById('mrep-tel').value = emp.tel;
+      document.getElementById('mrep-pin').value = emp.pin;
+      document.getElementById('mrep-comision').value = emp.comision;
+      document.getElementById('titulo-modal-rep').innerText = `Editar Ficha: ${emp.nombre}`;
+      document.getElementById('modal-empleado-admin').style.display = 'flex';
+    };
+
+    // ==========================================
+    // MODAL VEHÍCULO (VENTANA FLOTANTE)
+    // ==========================================
+    window.abrirModalVehiculo = function() {
+      document.getElementById('mveh-placa').value = '';
+      document.getElementById('mveh-km').value = 0;
+      document.getElementById('modal-vehiculo-admin').style.display = 'flex';
+    };
+
+    window.cerrarModalVehiculo = function() {
+      document.getElementById('modal-vehiculo-admin').style.display = 'none';
+    };
+
+    window.guardarVehiculoAdminForm = async function(e) {
+      e.preventDefault();
+      var placa = document.getElementById('mveh-placa').value.trim().toUpperCase();
+      var tipo = document.getElementById('mveh-tipo').value;
+      var cap = parseInt(document.getElementById('mveh-capacidad').value) || 20;
+      var km = parseInt(document.getElementById('mveh-km').value) || 0;
+
+      var nuevo = {
+        placa: placa,
+        tipo: tipo,
+        capacidad: cap,
+        km: km,
+        mant_basico: false,
+        mant_medio: false,
+        mant_mayor: false
+      };
+
+      try {
+        await api.post('vehiculos_gas', nuevo);
+      } catch(err) { console.warn(err); }
+
+      vehiculosGas.push(nuevo);
+      alert(`¡Vehículo con placa ${placa} guardado en la flota!`);
+      window.cerrarModalVehiculo();
+      window.renderizarMantenimientos();
+    };
+
+    // ==========================================
+    // MODAL GASTOS (VENTANA FLOTANTE Y GUARDADO ROBUSTO)
+    // ==========================================
+    window.abrirModalGasto = function() {
+      document.getElementById('mgst-concepto').value = '';
+      document.getElementById('mgst-monto').value = '';
+      document.getElementById('mgst-fecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-gasto-admin').style.display = 'flex';
+    };
+
+    window.cerrarModalGasto = function() {
+      document.getElementById('modal-gasto-admin').style.display = 'none';
+    };
+
+    window.guardarGastoAdminForm = async function(e) {
+      e.preventDefault();
+      var conc = document.getElementById('mgst-concepto').value.trim();
+      var monto = parseFloat(document.getElementById('mgst-monto').value) || 0;
+      var fecha = document.getElementById('mgst-fecha').value;
+      var tipo = document.getElementById('mgst-tipo').value;
+
+      var obj = { 
+        tipo: 'egreso_gasto',
+        categoria_gasto: tipo,
+        concepto: conc,
+        monto: monto,
+        responsable: adminSeleccionado
+      };
+
+      try {
+        await api.post('movimientos_caja_gas', obj);
+      } catch (err) { console.warn(err); }
+
+      obj.fecha = fecha;
+      if (tipo === 'fijo') gastosFijos.unshift(obj);
+      else gastosImprevistos.unshift(obj);
+
+      alert(`¡Gasto de $${monto.toLocaleString()} asentado en el sistema!`);
+      window.cerrarModalGasto();
+      window.renderizarGastos();
+      window.calcularFinanzas();
+    };
+
+    // ==========================================
+    // FACTURAS DE COMPRA / INGRESO DE PROVEEDOR
     // ==========================================
     window.agregarFilaFactura = function() {
       var itemNuevo = {
@@ -884,12 +1154,24 @@
         filasFacturaCompra[index].prodId = valor;
         var p = productosGas.find(pr => pr.id === valor);
         if (p) filasFacturaCompra[index].costo = p.costo || 0;
+        window.renderizarFilasFactura();
       } else if (campo === 'cantidad') {
         filasFacturaCompra[index].cantidad = parseInt(valor) || 0;
+        window.recalcularSubtotalFila(index);
       } else if (campo === 'costo') {
         filasFacturaCompra[index].costo = parseFloat(valor) || 0;
+        window.recalcularSubtotalFila(index);
       }
-      window.renderizarFilasFactura();
+    };
+
+    window.recalcularSubtotalFila = function(index) {
+      var f = filasFacturaCompra[index];
+      var sub = (f.cantidad || 0) * (f.costo || 0);
+      var subLabel = document.getElementById(`subtotal-fila-${index}`);
+      if (subLabel) subLabel.innerText = `$${sub.toLocaleString()}`;
+
+      var total = filasFacturaCompra.reduce((a, b) => a + ((b.cantidad || 0) * (b.costo || 0)), 0);
+      document.getElementById('fc-total-gran').innerText = `$${total.toLocaleString()}`;
     };
 
     window.renderizarFilasFactura = function() {
@@ -913,12 +1195,12 @@
               </select>
             </td>
             <td class="p-2 text-center">
-              <input type="number" min="1" value="${f.cantidad}" oninput="window.actualizarItemFilaFactura(${i}, 'cantidad', this.value)" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black">
+              <input type="number" min="1" value="${f.cantidad}" onchange="window.actualizarItemFilaFactura(${i}, 'cantidad', this.value)" onkeyup="window.actualizarItemFilaFactura(${i}, 'cantidad', this.value)" class="w-full p-2 bg-slate-50 border rounded-lg text-center font-black">
             </td>
             <td class="p-2 text-right">
-              <input type="number" min="0" value="${f.costo}" oninput="window.actualizarItemFilaFactura(${i}, 'costo', this.value)" class="w-full p-2 bg-slate-50 border rounded-lg text-right font-black">
+              <input type="number" min="0" value="${f.costo}" onchange="window.actualizarItemFilaFactura(${i}, 'costo', this.value)" onkeyup="window.actualizarItemFilaFactura(${i}, 'costo', this.value)" class="w-full p-2 bg-slate-50 border rounded-lg text-right font-black">
             </td>
-            <td class="p-2 text-right font-black text-indigo-950">
+            <td class="p-2 text-right font-black text-indigo-950" id="subtotal-fila-${i}">
               $${sub.toLocaleString()}
             </td>
             <td class="p-2 text-center">
@@ -946,7 +1228,6 @@
         var sub = f.cantidad * f.costo;
         total += sub;
 
-        // Sumar al stock del producto en la base de datos
         var prod = productosGas.find(p => p.id === f.prodId);
         if (prod) {
           prod.stock = (prod.stock || 0) + f.cantidad;
@@ -959,7 +1240,6 @@
         }
       }
 
-      // Guardar cabecera de la factura en la base de datos
       try {
         await api.post('facturas_compra_gas', {
           proveedor: proveedor,
@@ -973,7 +1253,6 @@
 
       alert(`¡Factura ${numero} de ${proveedor} procesada con éxito!\nSe sumaron las unidades al inventario central.`);
 
-      // Limpiar formulario
       document.getElementById('fc-numero').value = '';
       filasFacturaCompra = [];
       window.agregarFilaFactura();
@@ -1123,7 +1402,7 @@
     };
 
     // ==========================================
-    // RENDERIZADO PERSONAL DE REPARTO & CRÉDITOS
+    // RENDERIZADO PERSONAL DE REPARTO
     // ==========================================
     window.renderizarEquipo = function() {
       var contEmp = document.getElementById('lista-empleados-gas');
@@ -1185,52 +1464,6 @@
             <p class="text-[11px] text-slate-500 font-medium">${pr.fecha} • Motivo: ${pr.concepto}</p>
           </div>
         `).join('');
-      }
-    };
-
-    window.abrirModalEmpleado = async function() {
-      var nom = prompt("Nombre completo del repartidor:");
-      if (!nom) return;
-      var veh = prompt("Vehículo asignado (Ej: Motocarguero XYZ123):") || "Móvil Patio";
-      var tel = prompt("Teléfono / Celular:") || "-";
-      var pin = prompt("PIN de acceso a mostrador/móvil (4 dígitos):") || "1234";
-
-      const nuevo = {
-        nombre: nom,
-        vehiculo: veh,
-        telefono: tel,
-        rol: 'Repartidor',
-        pin: pin,
-        comision: 2000,
-        saldo_prestamo: 0,
-        pipetas_mes: 0,
-        ventas_mes: 0
-      };
-
-      try {
-        const res = await api.post('repartidores_gas', nuevo);
-        const nuevoId = (res && res.data && res.data[0]) ? String(res.data[0].id) : 'emp-' + Date.now();
-        nuevo.id = nuevoId;
-        empleadosGas.push(nuevo);
-        alert(`¡Repartidor ${nom} registrado en el VPS!`);
-      } catch (e) {
-        nuevo.id = 'emp-' + Date.now();
-        empleadosGas.push(nuevo);
-      }
-      window.renderizarEquipo();
-    };
-
-    window.editarEmpleado = async function(id) {
-      var emp = empleadosGas.find(e => e.id === id);
-      if (!emp) return;
-
-      var nuevaComision = prompt(`Editar valor de comisión por pipeta para ${emp.nombre}:`, emp.comision);
-      if (nuevaComision !== null) {
-        emp.comision = parseFloat(nuevaComision) || emp.comision;
-        if (!isNaN(parseInt(emp.id))) {
-          await api.put('repartidores_gas', emp.id, { comision: emp.comision });
-        }
-        window.renderizarEquipo();
       }
     };
 
@@ -1453,28 +1686,6 @@
       }).join('');
     };
 
-    window.abrirModalVehiculo = async function() {
-      var placa = prompt("Placa del vehículo:");
-      if (!placa) return;
-      var tipo = prompt("Tipo (Ej: Camión NHR o Motocarguero):") || "Camión NHR";
-      var km = parseInt(prompt("Kilometraje / Odómetro actual:") || 0);
-
-      var nuevo = {
-        placa: placa.toUpperCase(),
-        tipo: tipo,
-        km: km,
-        mant_basico: false,
-        mant_medio: false,
-        mant_mayor: false
-      };
-
-      try {
-        await api.post('vehiculos_gas', nuevo);
-      } catch(e) {}
-      vehiculosGas.push(nuevo);
-      window.renderizarMantenimientos();
-    };
-
     // ==========================================
     // CATÁLOGO DE PRODUCTOS
     // ==========================================
@@ -1532,31 +1743,6 @@
           <td class="p-2 text-center"><button type="button" onclick="gastosImprevistos.splice(${idx},1); window.renderizarGastos(); window.calcularFinanzas();" class="text-rose-500 font-bold">✕</button></td>
         </tr>
       `).join('');
-    };
-
-    window.abrirModalGasto = async function() {
-      var conc = prompt("Concepto del gasto:");
-      if (!conc) return;
-      var monto = parseFloat(prompt("Monto pagado ($):", "100000")) || 0;
-      var esFijo = confirm("¿Es un gasto FIJO operativo? (Afecta punto de equilibrio)\nCancelar = Gasto imprevisto");
-      
-      var obj = { 
-        tipo: 'egreso_gasto',
-        categoria_gasto: esFijo ? 'fijo' : 'imprevisto',
-        concepto: conc,
-        monto: monto,
-        responsable: adminSeleccionado
-      };
-
-      try {
-        await api.post('movimientos_caja_gas', obj);
-      } catch (e) { console.warn(e); }
-
-      if (esFijo) gastosFijos.unshift(obj);
-      else gastosImprevistos.unshift(obj);
-
-      window.renderizarGastos();
-      window.calcularFinanzas();
     };
 
     // ==========================================
